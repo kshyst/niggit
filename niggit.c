@@ -6,6 +6,7 @@
 
 #define branchesAddress ".niggit/branches"
 #define masterAddress ".niggit/branches/master"
+#define stagesCurrentAddress ".niggit/.stages/stages-current"
 
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
@@ -17,7 +18,6 @@ int main(int argc, char **argv)
 {
     CommandFinder(argv);
 }
-
 //Functions
 char* GetHead()
 {
@@ -27,21 +27,6 @@ char* GetHead()
     char *currentDirTokenized = (char*)(malloc(1000));
     sscanf(currentDir , "HEAD=%[^\n]%*c" , currentDirTokenized);
     return currentDirTokenized;
-}
-int SearchInArgv(char** argv , char* word)
-{
-    for (int i = 0; i < 10000; i++)
-    {
-        if (!strcmp(argv[i] , word))
-        {
-            return 1;
-        }
-        if (argv[i] == NULL)
-        {
-            break;
-        }
-    }
-    return 0;
 }
 int Search(char* argv , char* word)
 {
@@ -53,11 +38,57 @@ int Search(char* argv , char* word)
 }
 void ConfigUserName(int isGlobal , char* userName)
 {
-
+    FILE* configFile;
+    if (!isGlobal)
+    {
+        configFile = fopen(".niggit/configs/local-username.txt" , "w");
+        if(configFile == NULL)
+        {
+            printf("Error opening file!\n");
+            return;
+        }
+        fprintf(configFile , "%s" , userName);
+        printf("local username successfully changed ! \n");
+    }
+    else
+    {
+        configFile = fopen("/home/kshyst/.niggit-settings/global-username.txt" , "w");
+        if(configFile == NULL)
+        {
+            printf("Error opening file!\n");
+            return;
+        }
+        fprintf(configFile , "%s" , userName);
+        printf("global username successfully changed ! \n");
+    }
+    fclose(configFile);
 }
 void ConfigUserEmail(int isGlobal , char* userEmail)
 {
-
+    FILE* configFile;
+    if (!isGlobal)
+    {
+        configFile = fopen(".niggit/configs/local-userEmail.txt" , "w");
+        if(configFile == NULL)
+        {
+            printf("Error opening file!\n");
+            return;
+        }
+        fprintf(configFile , "%s" , userEmail);
+        printf("local userEmail successfully changed ! \n");
+    }
+    else
+    {
+        configFile = fopen("/home/kshyst/.niggit-settings/global-userEmail.txt" , "w");
+        if(configFile == NULL)
+        {
+            printf("Error opening file!\n");
+            return;
+        }
+        fprintf(configFile , "%s" , userEmail);
+        printf("global userEmail successfully changed ! \n");
+    }
+    fclose(configFile);
 }
 void Init()
 {
@@ -66,11 +97,12 @@ void Init()
         system("rm -r .niggit");
 
         system("mkdir .niggit");
+        system("mkdir .niggit/configs");
         system("mkdir .niggit/branches");
         system("mkdir .niggit/branches/master");
-        system("mkdir .niggit/branches/master/.stages");
-        system("mkdir .niggit/branches/master/.stages/stages-current");
-        system("mkdir .niggit/branches/master/.stages/stages-latest");
+        system("mkdir .niggit/.stages");
+        system("mkdir .niggit/.stages/stages-current");
+        system("mkdir .niggit/.stages/stages-latest");
         system("mkdir .niggit/branches/master/.commits");
         
         FILE *fp = fopen(".niggit/head.txt" , "w");
@@ -88,9 +120,9 @@ void Init()
         system("mkdir .niggit");
         system("mkdir .niggit/branches");
         system("mkdir .niggit/branches/master");
-        system("mkdir .niggit/branches/master/.stages");
-        system("mkdir .niggit/branches/master/.stages/stages-current");
-        system("mkdir .niggit/branches/master/.stages/stages-latest");
+        system("mkdir .niggit/.stages");
+        system("mkdir .niggit/.stages/stages-current");
+        system("mkdir .niggit/.stages/stages-latest");
         FILE *fp = fopen(".niggit/head.txt" , "w");
         //fopen(".niggit/latestStages.txt" , "w");
         printf("niggit reinitialized! :)\n");
@@ -113,8 +145,7 @@ void Add(char **argv)
     }
 
     char currentStageRepo[1000] = "";
-    strcat(currentStageRepo , GetHead());
-    strcat(currentStageRepo , "/.stages/stages-current");
+    strcat(currentStageRepo , stagesCurrentAddress);
     
     //multiple file add -f
     if(!strcmp(argv[2] , "-f"))
@@ -173,11 +204,20 @@ void Add(char **argv)
     //depth
     if (!strcmp(argv[2], "-n")) 
     {
+        
+
         FILE *fp, *fpStage;
         char path[10000], pathStage[10000];
 
         char findCommand[1000] = "find -maxdepth ";
-        strcat(findCommand , argv[3]);
+        if (argv[3] == NULL)
+        {
+            strcat(findCommand , "100");
+        }
+        else
+        {
+            strcat(findCommand , argv[3]);
+        }
         fp = popen(findCommand, "r");
 
         int isFirstTimeInLoop = 0;
@@ -343,15 +383,44 @@ void Add(char **argv)
 }
 void Reset(char **argv)
 {
+    int doesHaveStar = 0;
+    for (size_t i = 0; i < strlen(argv[2]); i++)
+    {
+        if (argv[2][i] == '*')
+        {
+            doesHaveStar = 1;
+            break;
+        }
+    }
+    
+    //undo
     if (!strcmp(argv[2] , "-undo"))
     {
         
     }
-    else
+    //reset multiple
+    else if (!strcmp(argv[2] , "-f"))
     {
 
     }
-    
+    // reset wild card
+    else if ((argv[2] != NULL) && (doesHaveStar == 1))
+    {
+            
+    }
+    //normal reset
+    else
+    {
+        char currentStageRepo[1000] = "";
+        strcat(currentStageRepo , stagesCurrentAddress);
+        char command[1000] = "rm -r ";
+        strcat(command , currentStageRepo);
+        strcat(command , "/");
+        strcat(command , argv[2]);
+        system(command);
+        printf("File Unstaged :))\n");
+        
+    }
     
 }
 void Branch(char **argv)
@@ -418,40 +487,57 @@ void Branch(char **argv)
         strcat(dirStageLatest , "/stages-latest");
 
         system(dirMakeCommand);
-        system(dirStageCommand);
+        //system(dirStageCommand);
         system(dirCommitCommand);
-        system(dirStageCurrent);
-        system(dirStageLatest);
+        //system(dirStageCurrent);
+        //system(dirStageLatest);
 
         printf("Guess What?! branch created :0\n");
     }
 }
 void CommandFinder(char **argv)
 {
+    if (!strcmp(argv[1] , "help"))
+    {
+        printf("niggit init\n");
+        printf("niggit add <file>\n");
+        printf("niggit add -f <file1> <file2> ...\n");
+        printf("niggit add -n <depth>\n");
+        printf("niggit add \"<wildcard>\"\n");
+        printf("niggit reset <file>\n");
+        printf("niggit reset -undo\n");
+        printf("niggit branch\n");
+        printf("niggit branch <branch-name>\n");
+        // printf("niggit checkout <branch-name>\n");
+        // printf("niggit checkout -b <branch-name>\n");
+        // printf("niggit checkout -f <branch-name>\n");
+        // printf("niggit checkout -f -b <branch-name>\n");
+        // printf("niggit merge <branch-name>\n");
+        // printf("niggit merge -f <branch-
+    }
     if (!strcmp(argv[1] , "config"))
     {
-        if (SearchInArgv(argv , "user.name"))
+        if (!strcmp(argv[2] , "user.name"))
         {
-            if (SearchInArgv(argv , "-global"))
-            {
-                ConfigUserName(1 , argv[4]);
-            }
-            else
-            {
-                ConfigUserName(0 , argv[3]);
-            }    
+            ConfigUserName(0 , argv[3]);
         }
-        if (SearchInArgv(argv , "user.email"))
+        else if(!strcmp(argv[3] , "user.name") && (!strcmp(argv[3] , "user.name")))
         {
-            if (SearchInArgv(argv , "-global"))
-            {
-                ConfigUserEmail(1 , argv[4]);
-            }
-            else
-            {
-                ConfigUserEmail(0 , argv[3]);
-            }    
+            ConfigUserName(1 , argv[4]);
         }
+        else if (!strcmp(argv[2] , "user.email"))
+        {
+            ConfigUserEmail(0 , argv[3]);
+        }
+        else if(!strcmp(argv[3] , "user.email") && (!strcmp(argv[3] , "user.email")))
+        {
+            ConfigUserEmail(1 , argv[4]);
+        }
+        else
+        {
+            printf("BRUH you entered a wrong command for config :/\n");
+        }
+        
     }
     if (!strcmp(argv[1] , "init"))
     {
