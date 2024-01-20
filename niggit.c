@@ -534,8 +534,8 @@ void Reset(char **argv)
             {
                 char **x = (char**)malloc(1 * sizeof(char*));
                 x[2] = (char*)malloc(1000 * sizeof(char));
-                x[0] = (char*)malloc(1000 * sizeof(char));
                 x[1] = (char*)malloc(1000 * sizeof(char));
+                x[0] = (char*)malloc(1000 * sizeof(char));
 
                 char newLine[1000] = "/";
                 strcat(newLine , line);
@@ -549,12 +549,20 @@ void Reset(char **argv)
                         strcpy(x[0] , temp);
                     }
                 }
+
+                x[0][strcspn(x[0], "\n")] = '\0';
                 
-                char tmp[1000] = "\"";
+                char tmp[1000] = "";
                 strcat(tmp , x[0]);
-                strcat(tmp , "\"");
+                //strcat(tmp , "\"");
                 strcpy(x[2] , tmp);
-                Reset(x);
+
+                //printf("%s\n" , x[2]);
+                if (strcmp(x[2] , "-"))
+                {
+                    Reset(x);
+                }
+                
             }
             else 
             {
@@ -624,8 +632,10 @@ void Reset(char **argv)
         FILE *fp1 = NULL, *fp2 = NULL;
         char path[1000], path2[1000];
 
-        char commandWildcard[1000] = "find -type d ";
+        char commandWildcard[1000] = "find ";
+        strcat(commandWildcard, "\"");
         strcat(commandWildcard, stagesCurrentAddress);
+        strcat(commandWildcard, "\"");
         strcat(commandWildcard, " -name \"");
         strcat(commandWildcard, argvConverted);
         strcat(commandWildcard, "\"");
@@ -634,12 +644,16 @@ void Reset(char **argv)
         fp1 = popen(commandWildcard, "r");
 
         char commandWildcard2[1000] = "find ";
+        strcat(commandWildcard2, "\"");
         strcat(commandWildcard2, stagesCurrentAddress);
+        strcat(commandWildcard2, "\"");
         strcat(commandWildcard2, " -name \"");
         strcat(commandWildcard2, argvConverted);
-        strcat(commandWildcard2, "\"");
-        strcat(commandWildcard2, "*.txt 2> .niggit/error.log");
+        strcat(commandWildcard2, "\" 2> .niggit/error.log");
         fp2 = popen(commandWildcard2, "r");
+
+        //printf("%s\n" , commandWildcard2);
+        //printf("%s\n" , commandWildcard);
 
         if ((fp1 == NULL) && (fp2 == NULL)) {
             printf("Awwwww we didn't find any directory with that wildcard:(((\n");
@@ -650,10 +664,11 @@ void Reset(char **argv)
 
         while (fgets(path, sizeof(path) - 1, fp1) != NULL) 
         {
+            printf("%s\n" , path);
             isSomethingStaged = 1;
             path[strcspn(path, "\n")] = 0;
             //printf("%s\n", path);
-            char command[10000] = "rm -r ";
+            char command[10000] = "rm ";
             strcat(command, "\"");
             strcat(command, path);
             strcat(command, "\" ");
@@ -663,6 +678,7 @@ void Reset(char **argv)
 
         while (fgets(path2, sizeof(path2) - 1, fp2) != NULL) 
         {
+            printf("%s\n" , path2);
             isSomethingStaged = 1;
             path2[strcspn(path2, "\n")] = 0;
             //printf("%s\n", path2);
