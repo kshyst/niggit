@@ -633,27 +633,19 @@ void Reset(char **argv)
         char path[1000], path2[1000];
 
         char commandWildcard[1000] = "find ";
-        strcat(commandWildcard, "\"");
         strcat(commandWildcard, stagesCurrentAddress);
-        strcat(commandWildcard, "\"");
-        strcat(commandWildcard, " -name \"");
+        strcat(commandWildcard, " -name ");
         strcat(commandWildcard, argvConverted);
-        strcat(commandWildcard, "\"");
         strcat(commandWildcard, " 2> .niggit/error.log");
         //printf("%s\n", commandWildcard);
         fp1 = popen(commandWildcard, "r");
 
         char commandWildcard2[1000] = "find ";
-        strcat(commandWildcard2, "\"");
         strcat(commandWildcard2, stagesCurrentAddress);
-        strcat(commandWildcard2, "\"");
-        strcat(commandWildcard2, " -name \"");
+        strcat(commandWildcard2, " -name ");
         strcat(commandWildcard2, argvConverted);
-        strcat(commandWildcard2, "\" 2> .niggit/error.log");
+        strcat(commandWildcard2, "*.txt 2> .niggit/error.log");
         fp2 = popen(commandWildcard2, "r");
-
-        //printf("%s\n" , commandWildcard2);
-        //printf("%s\n" , commandWildcard);
 
         if ((fp1 == NULL) && (fp2 == NULL)) {
             printf("Awwwww we didn't find any directory with that wildcard:(((\n");
@@ -664,25 +656,23 @@ void Reset(char **argv)
 
         while (fgets(path, sizeof(path) - 1, fp1) != NULL) 
         {
-            printf("%s\n" , path);
             isSomethingStaged = 1;
             path[strcspn(path, "\n")] = 0;
-            //printf("%s\n", path);
-            char command[10000] = "rm ";
+            printf("%s\n", path);
+            char command[10000] = "find ";
             strcat(command, "\"");
             strcat(command, path);
             strcat(command, "\" ");
-            strcat(command, " 2> .niggit/error.log");
+            strcat(command, " -type f -delete 2> .niggit/error.log");
             system(command);
         }
 
         while (fgets(path2, sizeof(path2) - 1, fp2) != NULL) 
         {
-            printf("%s\n" , path2);
             isSomethingStaged = 1;
             path2[strcspn(path2, "\n")] = 0;
             //printf("%s\n", path2);
-            char command[10000] = "rm ";
+            char command[10000] = "rm -r ";
             strcat(command, "\"");
             strcat(command, path2);
             strcat(command, "\" ");
