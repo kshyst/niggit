@@ -325,15 +325,15 @@ void Add(char **argv)
         FILE *fp1 = NULL, *fp2 = NULL;
         char path[1000], path2[1000];
 
-        char commandWildcard[1000] = "find . -type d -name '";
+        char commandWildcard[1000] = "find . -type d -name ";
         strcat(commandWildcard, argvConverted);
-        strcat(commandWildcard, "' 2> .niggit/error.log");
+        strcat(commandWildcard, " 2> .niggit/error.log");
         //printf("%s\n", commandWildcard);
         fp1 = popen(commandWildcard, "r");
 
-        char commandWildcard2[1000] = "find . -name '";
+        char commandWildcard2[1000] = "find . -name ";
         strcat(commandWildcard2, argvConverted);
-        strcat(commandWildcard2, "*.txt' 2> .niggit/error.log");
+        strcat(commandWildcard2, "*.txt 2> .niggit/error.log");
         fp2 = popen(commandWildcard2, "r");
 
         if ((fp1 == NULL) && (fp2 == NULL)) {
@@ -353,6 +353,7 @@ void Add(char **argv)
             strcat(command, path);
             strcat(command, "\" ");
             strcat(command, currentStageRepo);
+            strcat(command, " 2> .niggit/error.log");
             system(command);
         }
 
@@ -366,6 +367,7 @@ void Add(char **argv)
             strcat(command, path2);
             strcat(command, "\" ");
             strcat(command, currentStageRepo);
+            strcat(command, " 2> .niggit/error.log");
             system(command);
         }
     
@@ -401,25 +403,159 @@ void Reset(char **argv)
     //reset multiple
     else if (!strcmp(argv[2] , "-f"))
     {
+        int i = 0;
+        while (argv[3+i] != NULL)
+        {
+            int dotCount = 0;
+            for (size_t j = 0; j < strlen(argv[3+i]); j++)
+            {
+                if (argv[3+i][j] == '.')
+                {
+                    dotCount++;
+                }
+            }
+            if (dotCount != 0)
+            {
 
+                char command[1000] = "rm -r ";
+                strcat(command , "\"");
+                strcat(command , stagesCurrentAddress);
+                strcat(command , "/");
+                strcat(command , argv[3+i]);
+                strcat(command , "\" 2> .niggit/error.log");
+                system(command);
+                printf("File Unstaged :))\n");
+            }
+            else
+            {
+                char folderToUnstage[1000] = "\"";
+                strcat(folderToUnstage , stagesCurrentAddress);
+                strcat(folderToUnstage , "/");
+                strcat(folderToUnstage , argv[3+i]);
+                strcat(folderToUnstage , "\"");
+
+                char command[1000] = "find ";
+                strcat(command , folderToUnstage);
+                strcat(command , " -type f -delete 2> .niggit/error.log");
+                system(command);
+                //printf("%s\n" , command);
+                printf("Folder Unstaged :))\n");
+            }
+            i++;
+        }
+        
     }
     // reset wild card
     else if ((argv[2] != NULL) && (doesHaveStar == 1))
     {
-            
+        char argvConverted[1000] = "";
+        strcat(argvConverted, argv[2]);
+
+        FILE *fp1 = NULL, *fp2 = NULL;
+        char path[1000], path2[1000];
+
+        char commandWildcard[1000] = "find -type d ";
+        strcat(commandWildcard, stagesCurrentAddress);
+        strcat(commandWildcard, " -name \"");
+        strcat(commandWildcard, argvConverted);
+        strcat(commandWildcard, "\"");
+        strcat(commandWildcard, " 2> .niggit/error.log");
+        //printf("%s\n", commandWildcard);
+        fp1 = popen(commandWildcard, "r");
+
+        char commandWildcard2[1000] = "find ";
+        strcat(commandWildcard2, stagesCurrentAddress);
+        strcat(commandWildcard2, " -name \"");
+        strcat(commandWildcard2, argvConverted);
+        strcat(commandWildcard2, "\"");
+        strcat(commandWildcard2, "*.txt 2> .niggit/error.log");
+        printf(commandWildcard2);
+        fp2 = popen(commandWildcard2, "r");
+
+        if ((fp1 == NULL) && (fp2 == NULL)) {
+            printf("Awwwww we didn't find any directory with that wildcard:(((\n");
+            return;
+        }
+        
+        int isSomethingStaged = 0;
+
+        while (fgets(path, sizeof(path) - 1, fp1) != NULL) 
+        {
+            isSomethingStaged = 1;
+            path[strcspn(path, "\n")] = 0;
+            //printf("%s\n", path);
+            char command[10000] = "rm -r ";
+            strcat(command, "\"");
+            strcat(command, path);
+            strcat(command, "\" ");
+            strcat(command, " 2> .niggit/error.log");
+            system(command);
+        }
+
+        while (fgets(path2, sizeof(path2) - 1, fp2) != NULL) 
+        {
+            isSomethingStaged = 1;
+            path2[strcspn(path2, "\n")] = 0;
+            //printf("%s\n", path2);
+            char command[10000] = "rm ";
+            strcat(command, "\"");
+            strcat(command, path2);
+            strcat(command, "\" ");
+            strcat(command, " 2> .niggit/error.log");
+            system(command);
+        }
+    
+        if (!isSomethingStaged) 
+        {
+            printf("Awwwww we didn't find any directory with that wildcard:(((\n");
+            return;
+        }
+
+        printf("Files with the given wildcard Unstaged :))\n");
+
+        pclose(fp1);
+        pclose(fp2);
     }
     //normal reset
     else
     {
-        char currentStageRepo[1000] = "";
-        strcat(currentStageRepo , stagesCurrentAddress);
-        char command[1000] = "rm -r ";
-        strcat(command , currentStageRepo);
-        strcat(command , "/");
-        strcat(command , argv[2]);
-        system(command);
-        printf("File Unstaged :))\n");
+        int doesHaveDot = 0;
+        for (size_t i = 0; i < strlen(argv[2]); i++)
+        {
+            if (argv[2][i] == '.')
+            {
+                doesHaveDot = 1;
+                break;
+            }
+        }
         
+        if (doesHaveDot != 0)
+        {
+            char currentStageRepo[1000] = "";
+            strcat(currentStageRepo , stagesCurrentAddress);
+            char command[1000] = "rm -r \"";
+            strcat(command , currentStageRepo);
+            strcat(command , "/");
+            strcat(command , argv[2]);
+            strcat(command , "\" 2> .niggit/error.log");
+            system(command);
+            printf("File Unstaged :))\n");
+        }
+        else
+        {
+            char folderToUnstage[1000] = "\"";
+            strcat(folderToUnstage , stagesCurrentAddress);
+            strcat(folderToUnstage , "/");
+            strcat(folderToUnstage , argv[2]);
+            strcat(folderToUnstage , "\"");
+
+            char command[1000] = "find ";
+            strcat(command , folderToUnstage);
+            strcat(command , " -type f -delete 2> .niggit/error.log");
+            system(command);
+            //printf("%s\n" , command);
+            printf("Folder Unstaged :))\n");
+        }
     }
     
 }
