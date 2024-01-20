@@ -7,6 +7,8 @@
 #define branchesAddress ".niggit/branches"
 #define masterAddress ".niggit/branches/master"
 #define stagesCurrentAddress ".niggit/.stages/stages-current"
+#define latestStageTextFile ".niggit/.stages/stages-latest.txt"
+#define stageCount ".niggit/.stages/stages-count.txt"
 
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
@@ -102,7 +104,6 @@ void Init()
         system("mkdir .niggit/branches/master");
         system("mkdir .niggit/.stages");
         system("mkdir .niggit/.stages/stages-current");
-        system("mkdir .niggit/.stages/stages-latest");
         system("mkdir .niggit/branches/master/.commits");
         
         FILE *fp = fopen(".niggit/head.txt" , "w");
@@ -112,6 +113,14 @@ void Init()
         FILE *fp2 = fopen(".niggit/branches.txt" , "w");
         fprintf(fp2 , "master-.niggit/branches/master\n");
         fclose(fp2);
+
+        FILE *fp3 = fopen(".niggit/.stages/stages-latest.txt" , "w");
+        fprintf(fp3 , "-\n");
+        fclose(fp3);
+
+        FILE *fp4 = fopen(".niggit/.stages/stages-count.txt" , "w");
+        fprintf(fp4 , "0\n");
+        fclose(fp4);
 
         printf("niggit reinitialized! :)\n");
     }
@@ -129,11 +138,18 @@ void Init()
 
         fprintf(fp , "HEAD=.niggit/branches/master\n");
         fclose(fp);
+
+        FILE *fp2 = fopen(".niggit/branches.txt" , "w");
+        fprintf(fp2 , "master-.niggit/branches/master\n");
+        fclose(fp2);
+
+        FILE *fp3 = fopen(".niggit/.stages/stages-latest.txt" , "w");
+        fclose(fp3);
     }  
 }
-void Add(char **argv)
+void Add(char **argv , int isUndo)
 {
-    //printf("%s\n" , argv[2]);
+    int isAnythingStaged = 0;
     int doesHaveStar = 0;
     for (size_t i = 0; i < strlen(argv[2]); i++)
     {
@@ -171,6 +187,15 @@ void Add(char **argv)
                 }
                 fclose(temp);
 
+                if (!isUndo)
+                {
+                    FILE *latestStage = fopen(latestStageTextFile , "a");
+                    fprintf(latestStage , "%s\n" , argv[ind]);
+                    fclose(latestStage);
+                    isAnythingStaged = 1;
+                }
+                
+
                 char command[10000] = "cp ";
                 strcat(command , "\"");
                 strcat(command , argv[ind]);
@@ -189,6 +214,14 @@ void Add(char **argv)
                     return;
                 }
 
+                if (!isUndo)
+                {
+                    FILE *latestStage = fopen(latestStageTextFile , "a");
+                    fprintf(latestStage , "%s\n" , argv[ind]);
+                    fclose(latestStage);
+                    isAnythingStaged = 1;
+                }
+
                 char command[10000] = "cp -r ";
                 strcat(command , "\"");
                 strcat(command , argv[ind]);
@@ -200,12 +233,21 @@ void Add(char **argv)
             }
             ind++;
         }
+        if (!isUndo)
+        {
+            FILE *StageCount = fopen(stageCount , "r");
+            int count ;
+            fscanf(StageCount , "%d" , &count);
+            fclose(StageCount);
+            StageCount = fopen(stageCount , "w");
+            fprintf(StageCount , "%d" , count + 1);
+            fclose(StageCount);
+        }
+        
     }
     //depth
     if (!strcmp(argv[2], "-n")) 
     {
-        
-
         FILE *fp, *fpStage;
         char path[10000], pathStage[10000];
 
@@ -287,6 +329,22 @@ void Add(char **argv)
             }
             fclose(temp);
 
+            if (!isUndo)
+            {
+                FILE *latestStage = fopen(latestStageTextFile , "a");
+                fprintf(latestStage , "%s\n" , argv[2]);
+                fclose(latestStage);
+                isAnythingStaged = 1;
+
+                FILE *StageCount = fopen(stageCount , "r");
+                int count ;
+                fscanf(StageCount , "%d" , &count);
+                fclose(StageCount);
+                StageCount = fopen(stageCount , "w");
+                fprintf(StageCount , "%d" , count + 1);
+                fclose(StageCount);
+            }
+
             char command[10000] = "cp ";
             strcat(command , "\"");
             strcat(command , argv[2]);
@@ -303,6 +361,22 @@ void Add(char **argv)
             {
                 printf("BRUH the folder doesn't exists :/\n");
                 return;
+            }
+
+            if (!isUndo)
+            {
+                FILE *latestStage = fopen(latestStageTextFile , "a");
+                fprintf(latestStage , "%s\n" , argv[2]);
+                fclose(latestStage);
+                isAnythingStaged = 1;
+
+                FILE *StageCount = fopen(stageCount , "r");
+                int count ;
+                fscanf(StageCount , "%d" , &count);
+                fclose(StageCount);
+                StageCount = fopen(stageCount , "w");
+                fprintf(StageCount , "%d" , count + 1);
+                fclose(StageCount);
             }
             
             char command[10000] = "cp -r ";
@@ -376,11 +450,37 @@ void Add(char **argv)
             printf("Awwwww we didn't find any directory with that wildcard:(((\n");
             return;
         }
+        
+        if (!isUndo)
+        {
+            FILE *latestStage = fopen(latestStageTextFile , "a");
+            fprintf(latestStage , "%s\n" , argv[2]);
+            fclose(latestStage);
+            isAnythingStaged = 1;
+            FILE *StageCount = fopen(stageCount , "r");
+            int count ;
+            fscanf(StageCount , "%d" , &count);
+            fclose(StageCount);
+            StageCount = fopen(stageCount , "w");
+            fprintf(StageCount , "%d" , count + 1);
+            fclose(StageCount);
+        }
 
-        printf("Files with the given wildcard Staged :))\n");
+        if (isSomethingStaged)
+        {     
+            printf("Files with the given wildcard Staged :))\n");
+        }
+        
 
         pclose(fp1);
         pclose(fp2);
+    }
+    //append a -
+    if (isAnythingStaged)
+    {
+        FILE *latestStages = fopen(latestStageTextFile , "a");
+        fprintf(latestStages , "%s\n" , "-");
+        fclose(latestStages);
     }
 }
 void Reset(char **argv)
@@ -398,7 +498,77 @@ void Reset(char **argv)
     //undo
     if (!strcmp(argv[2] , "-undo"))
     {
+        FILE *StageCount = fopen(stageCount , "r");
+        int count ;
+        fscanf(StageCount , "%d" , &count);
+        fclose(StageCount);
+        StageCount = fopen(stageCount , "w");
+        fprintf(StageCount , "%d" , count - 1);
+        fclose(StageCount);
+
+        FILE *latestStages = fopen(latestStageTextFile , "r");
+        char command[1000] = "";
+        strcat(command , stagesCurrentAddress);
+        strcat(command , "/");
+        strcat(command , "temp.txt");
+        FILE *fpTemp = fopen(command, "w");
+        char line[1024];
+
+        if (count == 0)
+        {
+            printf("There is nothing to undo :/\n");
+            fclose(fpTemp);
+            remove(command);
+            return;
+        }
         
+
+        while (fgets(line, sizeof(line), latestStages)) 
+        {
+            if (!strcmp(line , "-\n") && (count > 0))
+            {
+                count--;
+                fputs(line, fpTemp);
+            } 
+            else if (count == 0)
+            {
+                char **x = (char**)malloc(1 * sizeof(char*));
+                x[2] = (char*)malloc(1000 * sizeof(char));
+                x[0] = (char*)malloc(1000 * sizeof(char));
+                x[1] = (char*)malloc(1000 * sizeof(char));
+
+                char newLine[1000] = "/";
+                strcat(newLine , line);
+
+                for (size_t i = 0; i < strlen(newLine); i++)
+                {
+                    if (newLine[i] == '/')
+                    {
+                        char temp[1000] = "";
+                        strcpy(temp , newLine + i + 1);
+                        strcpy(x[0] , temp);
+                    }
+                }
+                
+                char tmp[1000] = "\"";
+                strcat(tmp , x[0]);
+                strcat(tmp , "\"");
+                strcpy(x[2] , tmp);
+                Reset(x);
+            }
+            else 
+            {
+                fputs(line, fpTemp);
+            }
+        }
+
+        fclose(latestStages);
+        fclose(fpTemp);
+
+        remove(latestStageTextFile);
+        rename(command, latestStageTextFile);
+
+        printf("Last Staged File Unstaged :))\n");
     }
     //reset multiple
     else if (!strcmp(argv[2] , "-f"))
@@ -469,7 +639,6 @@ void Reset(char **argv)
         strcat(commandWildcard2, argvConverted);
         strcat(commandWildcard2, "\"");
         strcat(commandWildcard2, "*.txt 2> .niggit/error.log");
-        printf(commandWildcard2);
         fp2 = popen(commandWildcard2, "r");
 
         if ((fp1 == NULL) && (fp2 == NULL)) {
@@ -681,7 +850,7 @@ void CommandFinder(char **argv)
     }
     if (!strcmp(argv[1] , "add"))
     {
-        Add(argv);
+        Add(argv , 0);
     }
     if (!strcmp(argv[1] , "reset"))
     {
