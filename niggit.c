@@ -534,7 +534,7 @@ void Add(char **argv , int isUndo)
                 fclose(StageCount);
             }
             
-            char command[10000] = "cp ";
+            char command[10000] = "cp -r ";
             strcat(command , "\"");
             strcat(command , argv[2]);
             strcat(command , "\"");
@@ -542,7 +542,7 @@ void Add(char **argv , int isUndo)
             strcat(command , currentStageRepo);
 
             system(command);
-            printf("File Staged :))\n");
+            printf("Folder Staged :))\n");
         }
     }
     //wildcard add
@@ -754,7 +754,9 @@ void Reset(char **argv)
                 // char tmp[1000] = "";
                 // strcat(tmp , x[0]);
                 // //strcat(tmp , "\"");
-                strcpy(x[2] , line);
+                strcpy(x[2] , "\"");
+                strcat(x[2] , line);
+                strcat(x[2] , "\"");
 
                 //printf("%s\n" , x[2]);
                 if (strcmp(x[2] , "-"))
@@ -836,7 +838,6 @@ void Reset(char **argv)
         strcat(commandWildcard, " -name ");
         strcat(commandWildcard, argvConverted);
         strcat(commandWildcard, " 2> .niggit/error.log");
-        //printf("%s\n", commandWildcard);
         fp1 = popen(commandWildcard, "r");
 
         char commandWildcard2[1000] = "find ";
@@ -855,9 +856,14 @@ void Reset(char **argv)
 
         while (fgets(path, sizeof(path) - 1, fp1) != NULL) 
         {
+            if (strstr(path , ".niggit") == NULL)
+            {
+                continue;
+            }
+            
             isSomethingStaged = 1;
             path[strcspn(path, "\n")] = 0;
-            printf("%s\n", path);
+            //printf("%s\n", path);
             char command[10000] = "find ";
             strcat(command, "\"");
             strcat(command, path);
@@ -868,6 +874,10 @@ void Reset(char **argv)
 
         while (fgets(path2, sizeof(path2) - 1, fp2) != NULL) 
         {
+            if (strstr(path2 , ".niggit") == NULL)
+            {
+                continue;
+            }
             isSomethingStaged = 1;
             path2[strcspn(path2, "\n")] = 0;
             //printf("%s\n", path2);
