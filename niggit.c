@@ -700,7 +700,7 @@ void Reset(char **argv)
         }
     }
     
-    //undo
+    //undo UNDONE
     if (!strcmp(argv[2] , "-undo"))
     {
         //getting stage count
@@ -746,25 +746,15 @@ void Reset(char **argv)
                 x[1] = (char*)malloc(1000 * sizeof(char));
                 x[0] = (char*)malloc(1000 * sizeof(char));
 
-                char newLine[1000] = "/";
-                strcat(newLine , line);
+                // char newLine[1000] = "/";
+                // strcat(newLine , line);
 
-                for (size_t i = 0; i < strlen(newLine); i++)
-                {
-                    if (newLine[i] == '/')
-                    {
-                        char temp[1000] = "";
-                        strcpy(temp , newLine + i + 1);
-                        strcpy(x[0] , temp);
-                    }
-                }
-
-                x[0][strcspn(x[0], "\n")] = '\0';
+                // x[0][strcspn(x[0], "\n")] = '\0';
                 
-                char tmp[1000] = "";
-                strcat(tmp , x[0]);
-                //strcat(tmp , "\"");
-                strcpy(x[2] , tmp);
+                // char tmp[1000] = "";
+                // strcat(tmp , x[0]);
+                // //strcat(tmp , "\"");
+                strcpy(x[2] , line);
 
                 //printf("%s\n" , x[2]);
                 if (strcmp(x[2] , "-"))
