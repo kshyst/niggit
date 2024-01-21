@@ -4,6 +4,10 @@
 #include <unistd.h>
 #include <dirent.h>
 
+#define globalSettingAddress "/home/kshyst/.niggit-settings"
+#define localSettingAddress ".niggit/configs"
+#define localAliasAddress ".niggit/configs/local-alias.txt"
+#define globalAliasAddress "/home/kshyst/.niggit-settings/global-alias.txt"
 #define branchesAddress ".niggit/branches"
 #define masterAddress ".niggit/branches/master"
 #define stagesCurrentAddress ".niggit/.stages/stages-current"
@@ -99,6 +103,50 @@ void ConfigUserEmail(int isGlobal , char* userEmail)
         printf("global userEmail successfully changed ! \n");
     }
     fclose(configFile);
+}
+void ConfigAlias(int isGlobal , char** argv)
+{
+    char alias[1000] = "";
+    char aliasFor[1000] = "";
+
+    if (isGlobal)
+    {
+        char temp[1000] = "";
+        sscanf(argv[3] , "alias.%[^\n]%*c" , temp);
+        strcat(alias , temp);
+        strcat(aliasFor , argv[4]);
+
+        char command[1000] = "";
+        strcat(command , globalSettingAddress);
+        strcat(command , "/global-alias.txt");
+        FILE* configFile = fopen(command , "a");
+        if(configFile == NULL)
+        {
+            printf("Error opening file!\n");
+            return;
+        }
+        fprintf(configFile , "%s-%s\n" , alias , aliasFor);
+    }
+    else
+    {
+        char temp[1000] = "";
+        sscanf(argv[2] , "alias.%[^\n]%*c" , temp);
+        strcat(alias , temp);
+        strcat(aliasFor , argv[3]);
+
+        char command[1000] = "";
+        strcat(command , localSettingAddress);
+        strcat(command , "/local-alias.txt");
+        FILE* configFile = fopen(command , "a");
+        if(configFile == NULL)
+        {
+            printf("Error opening file!\n");
+            return;
+        }
+        fprintf(configFile , "%s-%s\n" , alias , aliasFor);
+    }
+
+
 }
 void Init()
 {
@@ -902,7 +950,7 @@ void CommandFinder(char **argv)
         {
             ConfigUserName(0 , argv[3]);
         }
-        else if(!strcmp(argv[3] , "user.name") && (!strcmp(argv[3] , "user.name")))
+        else if(!strcmp(argv[3] , "user.name"))
         {
             ConfigUserName(1 , argv[4]);
         }
@@ -910,9 +958,17 @@ void CommandFinder(char **argv)
         {
             ConfigUserEmail(0 , argv[3]);
         }
-        else if(!strcmp(argv[3] , "user.email") && (!strcmp(argv[3] , "user.email")))
+        else if(!strcmp(argv[3] , "user.email"))
         {
             ConfigUserEmail(1 , argv[4]);
+        }
+        else if (strstr(argv[2] , "alias"))
+        {
+            ConfigAlias(0 , argv);
+        }
+        else if (strstr(argv[3] , "alias"))
+        {
+            ConfigAlias(1 , argv);
         }
         else
         {
@@ -940,5 +996,9 @@ void CommandFinder(char **argv)
     {
         Status(argv);
     }
-       
+    //search for alias UNDONE
+    else
+    {
+        printf("BRUH you entered a wrong command :/\n");
+    }   
 }
