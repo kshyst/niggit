@@ -21,6 +21,14 @@ int main(int argc, char **argv)
     CommandFinder(argv);
 }
 //Functions
+int IsNiggitInitialized()
+{
+    if (opendir(".niggit") == NULL)
+    {
+        return 0;
+    }
+    return 1;
+}
 char* GetHead()
 {
     char currentDir[1000] = "";
@@ -94,6 +102,39 @@ void ConfigUserEmail(int isGlobal , char* userEmail)
 }
 void Init()
 {
+    // check if we already have initialized niggit in parent directories UNDONE
+    if (!IsNiggitInitialized())
+    {
+        char currentDir[1000] = "";
+        char cwd[1000];
+        getcwd(cwd, sizeof(cwd));
+        strcpy(currentDir, cwd);
+
+        const char s[2] = "/";
+        char *token;
+
+        token = strtok(currentDir, s);
+
+        char currentDir2[1000] = "";
+
+        while( token != NULL ) 
+        {
+            strcat(currentDir2 , token);
+            strcat(currentDir2 , "/");
+
+            char command[1000] = "/";
+            strcat(command , currentDir2);
+            strcat(command , ".niggit");
+
+            if (opendir(command) != NULL)
+            {
+                printf("BRUH niggit is already initialized in parent directories :/\n");
+                return;
+            }
+
+            token = strtok(NULL, s);
+        }
+    }
     if (opendir(".niggit") != NULL)
     {
         system("rm -r .niggit");
@@ -134,7 +175,6 @@ void Init()
         system("mkdir .niggit/.stages/stages-latest");
         FILE *fp = fopen(".niggit/head.txt" , "w");
         //fopen(".niggit/latestStages.txt" , "w");
-        printf("niggit reinitialized! :)\n");
 
         fprintf(fp , "HEAD=.niggit/branches/master\n");
         fclose(fp);
@@ -145,10 +185,18 @@ void Init()
 
         FILE *fp3 = fopen(".niggit/.stages/stages-latest.txt" , "w");
         fclose(fp3);
+        
+        printf("niggit initialized! :)\n");
     }  
 }
 void Add(char **argv , int isUndo)
 {
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    
     int isAnythingStaged = 0;
     int doesHaveStar = 0;
     for (size_t i = 0; i < strlen(argv[2]); i++)
@@ -485,6 +533,11 @@ void Add(char **argv , int isUndo)
 }
 void Reset(char **argv)
 {
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
     int doesHaveStar = 0;
     for (size_t i = 0; i < strlen(argv[2]); i++)
     {
@@ -740,6 +793,11 @@ void Reset(char **argv)
 }
 void Branch(char **argv)
 {
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
     if (argv[2] == NULL)
     {
         FILE *fp2 = fopen(".niggit/branches.txt" , "r");
@@ -810,6 +868,14 @@ void Branch(char **argv)
         printf("Guess What?! branch created :0\n");
     }
 }
+void Status(char **argv)
+{
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+}
 void CommandFinder(char **argv)
 {
     if (!strcmp(argv[1] , "help"))
@@ -870,6 +936,9 @@ void CommandFinder(char **argv)
     {
         Branch(argv);
     }
-    
-    
+    if (!strcmp(argv[1] , "status"))
+    {
+        Status(argv);
+    }
+       
 }
