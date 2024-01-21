@@ -275,30 +275,50 @@ void Add(char **argv , int isUndo)
             }
             if (dotCount == 1)
             {
-                FILE* temp = fopen(argv[ind] , "r");
-                if (temp == NULL)
-                {
-                    printf("BRUH the file doesn't exists :/\n");
-                    return;
-                }
-                fclose(temp);
+                const char s[2] = "/";
+                char *token;
+                char argv2Copy[1000] = "";
+                strcat(argv2Copy , argv[ind]);
+                token = strtok(argv[ind], s);
 
-                if (!isUndo)
+                char currentDir[1000] = "";
+
+                while( token != NULL ) 
                 {
-                    FILE *latestStage = fopen(latestStageTextFile , "a");
-                    fprintf(latestStage , "%s\n" , argv[ind]);
-                    fclose(latestStage);
-                    isAnythingStaged = 1;
+                    if (strstr(token , ".") != NULL)
+                    {
+                        break;
+                    }
+
+                    strcat(currentDir , token);
+                    strcat(currentDir , "/");
+
+                    if (opendir(currentDir) != NULL)
+                    {
+                        char command[1000] = "mkdir ";
+                        strcat(command , "\"");
+                        strcat(command , currentStageRepo);
+                        strcat(command , "/");
+                        strcat(command , currentDir);
+                        strcat(command , "\"");
+                        strcat(command , " 2> .niggit/error.log");
+                        system(command);
+                    }
+
+                    token = strtok(NULL, s);
                 }
-                
 
                 char command[10000] = "cp ";
                 strcat(command , "\"");
-                strcat(command , argv[ind]);
+                strcat(command , argv2Copy);
                 strcat(command , "\"");
                 strcat(command , " ");
+                strcat(command , "\"");
                 strcat(command , currentStageRepo);
-
+                strcat(command , "/");
+                strcat(command , currentDir);
+                strcat(command , "\"");
+                //printf("%s\n" , command);
                 system(command);
                 printf("File Staged :))\n");
             }
@@ -415,6 +435,7 @@ void Add(char **argv , int isUndo)
                 dotCount++;
             }
         }
+        
         if (dotCount == 1)
         {
             FILE* temp = fopen(argv[2] , "r");
@@ -441,13 +462,51 @@ void Add(char **argv , int isUndo)
                 fclose(StageCount);
             }
 
+            const char s[2] = "/";
+            char *token;
+            char argv2Copy[1000] = "";
+            strcat(argv2Copy , argv[2]);
+
+            token = strtok(argv[2], s);
+
+            char currentDir[1000] = "";
+
+            while( token != NULL ) 
+            {
+                if (strstr(token , ".") != NULL)
+                {
+                    break;
+                }
+                
+                strcat(currentDir , token);
+                strcat(currentDir , "/");
+
+                if (opendir(currentDir) != NULL)
+                {
+                    char command[1000] = "mkdir ";
+                    strcat(command , "\"");
+                    strcat(command , currentStageRepo);
+                    strcat(command , "/");
+                    strcat(command , currentDir);
+                    strcat(command , "\"");
+                    strcat(command , " 2> .niggit/error.log");
+                    system(command);
+                }
+
+                token = strtok(NULL, s);
+            }
+            
             char command[10000] = "cp ";
             strcat(command , "\"");
-            strcat(command , argv[2]);
+            strcat(command , argv2Copy);
             strcat(command , "\"");
             strcat(command , " ");
+            strcat(command , "\"");
             strcat(command , currentStageRepo);
-
+            strcat(command , "/");
+            strcat(command , currentDir);
+            strcat(command , "\"");
+            //printf("%s\n" , command);
             system(command);
             printf("File Staged :))\n");
         }
@@ -475,7 +534,7 @@ void Add(char **argv , int isUndo)
                 fclose(StageCount);
             }
             
-            char command[10000] = "cp -r ";
+            char command[10000] = "cp ";
             strcat(command , "\"");
             strcat(command , argv[2]);
             strcat(command , "\"");
@@ -530,15 +589,60 @@ void Add(char **argv , int isUndo)
         while (fgets(path2, sizeof(path2) - 1, fp2) != NULL) 
         {
             isSomethingStaged = 1;
+            if (strstr(path2 , ".niggit") != NULL)
+            {
+                continue;
+            }
+            
             path2[strcspn(path2, "\n")] = 0;
             //printf("%s\n", path2);
+            const char s[2] = "/";
+            char *token;
+            char argv2Copy[1000] = "";
+            strcat(argv2Copy , path2 + 2);
+
+            token = strtok(path2 + 2, s);
+
+            char currentDir[1000] = "";
+
+            while( token != NULL ) 
+            {
+                if (strstr(token , ".") != NULL)
+                {
+                    break;
+                }
+                
+                strcat(currentDir , token);
+                strcat(currentDir , "/");
+
+                if (opendir(currentDir) != NULL)
+                {
+                    char command[1000] = "mkdir ";
+                    strcat(command , "\"");
+                    strcat(command , currentStageRepo);
+                    strcat(command , "/");
+                    strcat(command , currentDir);
+                    strcat(command , "\"");
+                    strcat(command , " 2> .niggit/error.log");
+                    system(command);
+                }
+
+                token = strtok(NULL, s);
+            }
+            
             char command[10000] = "cp ";
-            strcat(command, "\"");
-            strcat(command, path2);
-            strcat(command, "\" ");
-            strcat(command, currentStageRepo);
-            strcat(command, " 2> .niggit/error.log");
+            strcat(command , "\"");
+            strcat(command , argv2Copy);
+            strcat(command , "\"");
+            strcat(command , " ");
+            strcat(command , "\"");
+            strcat(command , currentStageRepo);
+            strcat(command , "/");
+            strcat(command , currentDir);
+            strcat(command , "\"");
+            //printf("%s\n" , command);
             system(command);
+            printf("File Staged :))\n");
         }
     
         if (!isSomethingStaged) 
@@ -944,7 +1048,7 @@ void CommandFinder(char **argv)
         // printf("niggit merge <branch-name>\n");
         // printf("niggit merge -f <branch-
     }
-    if (!strcmp(argv[1] , "config"))
+    else if (!strcmp(argv[1] , "config"))
     {
         if (!strcmp(argv[2] , "user.name"))
         {
@@ -976,23 +1080,23 @@ void CommandFinder(char **argv)
         }
         
     }
-    if (!strcmp(argv[1] , "init"))
+    else if (!strcmp(argv[1] , "init"))
     {
         Init();
     }
-    if (!strcmp(argv[1] , "add"))
+    else if (!strcmp(argv[1] , "add"))
     {
         Add(argv , 0);
     }
-    if (!strcmp(argv[1] , "reset"))
+    else if (!strcmp(argv[1] , "reset"))
     {
         Reset(argv);
     }
-    if (!strcmp(argv[1] , "branch"))
+    else if (!strcmp(argv[1] , "branch"))
     {
         Branch(argv);
     }
-    if (!strcmp(argv[1] , "status"))
+    else if (!strcmp(argv[1] , "status"))
     {
         Status(argv);
     }
