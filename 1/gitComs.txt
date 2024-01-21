@@ -1,0 +1,4 @@
+git push origin master
+git remote set-url origin git@github.com:kshyst/niggit.git
+git remote -v
+git clone git@github.com:kshyst/niggit.git
