@@ -498,14 +498,13 @@ void Reset(char **argv)
     //undo
     if (!strcmp(argv[2] , "-undo"))
     {
+        //getting stage count
         FILE *StageCount = fopen(stageCount , "r");
         int count ;
         fscanf(StageCount , "%d" , &count);
         fclose(StageCount);
-        StageCount = fopen(stageCount , "w");
-        fprintf(StageCount , "%d" , count - 1);
-        fclose(StageCount);
 
+        // getting the list of latest stages
         FILE *latestStages = fopen(latestStageTextFile , "r");
         char command[1000] = "";
         strcat(command , stagesCurrentAddress);
@@ -514,7 +513,8 @@ void Reset(char **argv)
         FILE *fpTemp = fopen(command, "w");
         char line[1024];
 
-        if (count == 0)
+        // checks if we had any latest stages
+        if (count <= 0)
         {
             printf("There is nothing to undo :/\n");
             fclose(fpTemp);
@@ -522,6 +522,10 @@ void Reset(char **argv)
             return;
         }
         
+        // reducing stage count by 1
+        StageCount = fopen(stageCount , "w");
+        fprintf(StageCount , "%d" , count - 1);
+        fclose(StageCount);
 
         while (fgets(line, sizeof(line), latestStages)) 
         {
