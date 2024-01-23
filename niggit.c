@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <time.h> 
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #define stagesCurrentAddress ".niggit/.stages/stages-current"
 #define latestStageTextFile ".niggit/.stages/stages-latest.txt"
@@ -39,6 +40,34 @@ int main(int argc, char **argv)
     CommandFinder(argv);
 }
 //Functions
+void count_files(char *base_path, int *file_count) {
+    char path[1000];
+    struct dirent *dp;
+    DIR *dir = opendir(base_path);
+
+    if (!dir)
+        return;
+
+    while ((dp = readdir(dir)) != NULL) {
+        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
+            // Construct new path from our base path
+            strcpy(path, base_path);
+            strcat(path, "/");
+            strcat(path, dp->d_name);
+
+            struct stat path_stat;
+            stat(path, &path_stat);
+
+            if (S_ISREG(path_stat.st_mode)) {
+                (*file_count)++;
+            } else if (S_ISDIR(path_stat.st_mode)) {
+                count_files(path, file_count);
+            }
+        }
+    }
+
+    closedir(dir);
+}
 char* GetTime()
 {
     struct tm* local; 
@@ -47,7 +76,7 @@ char* GetTime()
     local = localtime(&t); 
 
     char* time = (char*)(malloc(1000));
-    sprintf(time , "%d,%d,%d,%d,%d,%d" , local->tm_year + 1900 , local->tm_mon + 1 , local->tm_mday , local->tm_hour , local->tm_min , local->tm_sec);
+    sprintf(time , "%d/%d/%d %d:%d:%d" , local->tm_year + 1900 , local->tm_mon + 1 , local->tm_mday , local->tm_hour , local->tm_min , local->tm_sec);
   
     return time;
 }
@@ -1172,6 +1201,15 @@ void Commit(char **argv)
         return;
     }
 
+    //finds how many files are there in stage-current
+    int fileCount = 0;
+    count_files(stagesCurrentAddress, &fileCount);
+    if (fileCount == 0)
+    {
+        printf("You Didn't fucking stage anything what are you trying to commit ???????\n");
+        return;
+    }
+    
     //get the total commit counts till now for creating commit id
     FILE *fp = fopen(totalCommitCount , "r");
     int count ;
@@ -1256,22 +1294,6 @@ void Commit(char **argv)
     fgets(currentBranchNameString , sizeof(currentBranchNameString) , fp5);
     fclose(fp5);
 
-    //finds how many files are there in stage-current
-    int fileCount = 0;
-    DIR *dir;
-    struct dirent *ent;
-    if ((dir = opendir (stagesCurrentAddress)) != NULL) 
-    {
-        while ((ent = readdir (dir)) != NULL) 
-        {
-            if (strstr(ent->d_name , ".") != NULL)
-            {
-                fileCount++;
-            }
-        }
-        closedir (dir);
-    }
-
     //deletes stages-current folder and creates a new one
     char commandToDeleteStagesCurrent[1000] = "rm -r \"";
     strcat(commandToDeleteStagesCurrent , stagesCurrentAddress);
@@ -1289,6 +1311,13 @@ void Commit(char **argv)
     FILE *commitListFp = fopen(commitList , "a");
     fprintf(commitListFp , "%s-%s-%s-%s-%s-%d\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername , fileCount);
 
+    //add commit to global commit list
+    FILE *globalCommitListFp = fopen(globalCommitList , "a");
+    fprintf(globalCommitListFp , "%s-%s-%s-%s-%s-%d\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername , fileCount);
+    fclose(globalCommitListFp);
+
+    //print every shit about commit
+
     printf("you just Cummited ! shame...\n");
     printf("commit id : %s\n" , commitIdString);
     printf("commit message : %s\n" , commitMessage);
@@ -1299,10 +1328,6 @@ void Commit(char **argv)
 
     //store the last commit 
 
-    //add commit to global commit list
-    FILE *globalCommitListFp = fopen(globalCommitList , "a");
-    fprintf(globalCommitListFp , "%s-%s-%s-%s-%s-%d\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername , fileCount);
-    fclose(globalCommitListFp);
 
 }
 void Log(char **argv)
@@ -1412,14 +1437,292 @@ void Log(char **argv)
     //log with since
     if (!strcmp(argv[2] , "-since"))
     {
-        
-        
+        if (argv[3] == NULL)
+        {
+            printf("you didn't enter a date :/\n");
+            return;
+        }
+        int sinceYear , sinceMonth , sinceDay , sinceHour , sinceMinute , sinceSecond;
+        sscanf(argv[3] , "%d/%d/%d %d:%d:%d" , &sinceYear , &sinceMonth , &sinceDay , &sinceHour , &sinceMinute , &sinceSecond);
+
+        FILE *fp = fopen(globalCommitList , "r");
+        char lines[1000][1000];
+        int count = 0;
+        int isDateFound = 0;
+        while (fgets(lines[count] , sizeof(lines[count]) , fp) != NULL)
+        {
+            count++;
+        }
+        fclose(fp);
+
+        for (int i = count - 1; i >= 0; i--)
+        {
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            int commitYear , commitMonth , commitDay , commitHour , commitMinute , commitSecond;
+            sscanf(commitTime , "%d/%d/%d %d:%d:%d" , &commitYear , &commitMonth , &commitDay , &commitHour , &commitMinute , &commitSecond);
+
+            if (commitYear < sinceYear)
+            {
+                continue;
+            }
+            else if (commitYear > sinceYear)
+            {
+                isDateFound = 1;
+                printf(GREEN"commit id : %s\n"RESET , commitId);
+                printf("commit message : %s\n" , commitMessage);
+                printf("commit time : %s\n" , commitTime);
+                printf("commit branch : %s\n" , commitBranch);
+                printf("commit username : %s\n" , commitUsername);
+                printf("commit file count : %s\n" , commitFileCount);
+                printf("\n");
+                continue;
+            }
+            else
+            {
+                if (commitMonth < sinceMonth)
+                {
+                    continue;
+                }
+                else if (commitMonth > sinceMonth)
+                {
+                    isDateFound = 1;
+                    printf(GREEN"commit id : %s\n"RESET , commitId);
+                    printf("commit message : %s\n" , commitMessage);
+                    printf("commit time : %s\n" , commitTime);
+                    printf("commit branch : %s\n" , commitBranch);
+                    printf("commit username : %s\n" , commitUsername);
+                    printf("commit file count : %s\n" , commitFileCount);
+                    printf("\n");
+                    continue;
+                }
+                else
+                {
+                    if (commitDay < sinceDay)
+                    {
+                        continue;
+                    }
+                    else if (commitDay > sinceDay)
+                    {
+                        isDateFound = 1;
+                        printf(GREEN"commit id : %s\n"RESET , commitId);
+                        printf("commit message : %s\n" , commitMessage);
+                        printf("commit time : %s\n" , commitTime);
+                        printf("commit branch : %s\n" , commitBranch);
+                        printf("commit username : %s\n" , commitUsername);
+                        printf("commit file count : %s\n" , commitFileCount);
+                        printf("\n");
+                        continue;
+                    }
+                    else
+                    {
+                        if (commitHour < sinceHour)
+                        {
+                            continue;
+                        }
+                        else if (commitHour > sinceHour)
+                        {
+                            isDateFound = 1;
+                            printf(GREEN"commit id : %s\n"RESET , commitId);
+                            printf("commit message : %s\n" , commitMessage);
+                            printf("commit time : %s\n" , commitTime);
+                            printf("commit branch : %s\n" , commitBranch);
+                            printf("commit username : %s\n" , commitUsername);
+                            printf("commit file count : %s\n" , commitFileCount);
+                            printf("\n");
+                            continue;
+                        }
+                        else
+                        {
+                            if (commitMinute < sinceMinute)
+                            {
+                                continue;
+                            }
+                            else if (commitMinute > sinceMinute)
+                            {
+                                isDateFound = 1;
+                                printf(GREEN"commit id : %s\n"RESET , commitId);
+                                printf("commit message : %s\n" , commitMessage);
+                                printf("commit time : %s\n" , commitTime);
+                                printf("commit branch : %s\n" , commitBranch);
+                                printf("commit username : %s\n" , commitUsername);
+                                printf("commit file count : %s\n" , commitFileCount);
+                                printf("\n");
+                                continue;
+                            }
+                            else
+                            {
+                                if (commitSecond < sinceSecond)
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    isDateFound = 1;
+                                    printf(GREEN"commit id : %s\n"RESET , commitId);
+                                    printf("commit message : %s\n" , commitMessage);
+                                    printf("commit time : %s\n" , commitTime);
+                                    printf("commit branch : %s\n" , commitBranch);
+                                    printf("commit username : %s\n" , commitUsername);
+                                    printf("commit file count : %s\n" , commitFileCount);
+                                    printf("\n");
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }    
+        if (isDateFound == 0)
+        {
+            printf("we didn't find any commit since this date :/\n");
+        }
     }
     //log with until
     if (!strcmp(argv[2] , "-before"))
     {
-        
-        
+        if (argv[3] == NULL)
+        {
+            printf("you didn't enter a date :/\n");
+            return;
+        }
+        int sinceYear , sinceMonth , sinceDay , sinceHour , sinceMinute , sinceSecond;
+        sscanf(argv[3] , "%d/%d/%d %d:%d:%d" , &sinceYear , &sinceMonth , &sinceDay , &sinceHour , &sinceMinute , &sinceSecond);
+
+        FILE *fp = fopen(globalCommitList , "r");
+        char lines[1000][1000];
+        int count = 0;
+        int isDateFound = 0;
+        while (fgets(lines[count] , sizeof(lines[count]) , fp) != NULL)
+        {
+            count++;
+        }
+        fclose(fp);
+
+        for (int i = count - 1; i >= 0; i--)
+        {
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            int commitYear , commitMonth , commitDay , commitHour , commitMinute , commitSecond;
+            sscanf(commitTime , "%d/%d/%d %d:%d:%d" , &commitYear , &commitMonth , &commitDay , &commitHour , &commitMinute , &commitSecond);
+
+            if (commitYear > sinceYear)
+            {
+                continue;
+            }
+            else if (commitYear < sinceYear)
+            {
+                isDateFound = 1;
+                printf(GREEN"commit id : %s\n"RESET , commitId);
+                printf("commit message : %s\n" , commitMessage);
+                printf("commit time : %s\n" , commitTime);
+                printf("commit branch : %s\n" , commitBranch);
+                printf("commit username : %s\n" , commitUsername);
+                printf("commit file count : %s\n" , commitFileCount);
+                printf("\n");
+                continue;
+            }
+            else
+            {
+                if (commitMonth > sinceMonth)
+                {
+                    continue;
+                }
+                else if (commitMonth < sinceMonth)
+                {
+                    isDateFound = 1;
+                    printf(GREEN"commit id : %s\n"RESET , commitId);
+                    printf("commit message : %s\n" , commitMessage);
+                    printf("commit time : %s\n" , commitTime);
+                    printf("commit branch : %s\n" , commitBranch);
+                    printf("commit username : %s\n" , commitUsername);
+                    printf("commit file count : %s\n" , commitFileCount);
+                    printf("\n");
+                    continue;
+                }
+                else
+                {
+                    if (commitDay > sinceDay)
+                    {
+                        continue;
+                    }
+                    else if (commitDay < sinceDay)
+                    {
+                        isDateFound = 1;
+                        printf(GREEN"commit id : %s\n"RESET , commitId);
+                        printf("commit message : %s\n" , commitMessage);
+                        printf("commit time : %s\n" , commitTime);
+                        printf("commit branch : %s\n" , commitBranch);
+                        printf("commit username : %s\n" , commitUsername);
+                        printf("commit file count : %s\n" , commitFileCount);
+                        printf("\n");
+                        continue;
+                    }
+                    else
+                    {
+                        if (commitHour > sinceHour)
+                        {
+                            continue;
+                        }
+                        else if (commitHour < sinceHour)
+                        {
+                            isDateFound = 1;
+                            printf(GREEN"commit id : %s\n"RESET , commitId);
+                            printf("commit message : %s\n" , commitMessage);
+                            printf("commit time : %s\n" , commitTime);
+                            printf("commit branch : %s\n" , commitBranch);
+                            printf("commit username : %s\n" , commitUsername);
+                            printf("commit file count : %s\n" , commitFileCount);
+                            printf("\n");
+                            continue;
+                        }
+                        else
+                        {
+                            if (commitMinute > sinceMinute)
+                            {
+                                continue;
+                            }
+                            else if (commitMinute < sinceMinute)
+                            {
+                                isDateFound = 1;
+                                printf(GREEN"commit id : %s\n"RESET , commitId);
+                                printf("commit message : %s\n" , commitMessage);
+                                printf("commit time : %s\n" , commitTime);
+                                printf("commit branch : %s\n" , commitBranch);
+                                printf("commit username : %s\n" , commitUsername);
+                                printf("commit file count : %s\n" , commitFileCount);
+                                printf("\n");
+                                continue;
+                            }
+                            else
+                            {
+                                if (commitSecond > sinceSecond)
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    isDateFound = 1;
+                                    printf(GREEN"commit id : %s\n"RESET , commitId);
+                                    printf("commit message : %s\n" , commitMessage);
+                                    printf("commit time : %s\n" , commitTime);
+                                    printf("commit branch : %s\n" , commitBranch);
+                                    printf("commit username : %s\n" , commitUsername);
+                                    printf("commit file count : %s\n" , commitFileCount);
+                                    printf("\n");
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }    
+        if (isDateFound == 0)
+        {
+            printf("we didn't find any commit before this date :/\n");
+        }
     }
     //log with a word to search for
     if (!strcmp(argv[2] , "-search"))
