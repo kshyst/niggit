@@ -1312,6 +1312,12 @@ void Log(char **argv)
         printf("BRUH niggit is not initialized :/\n");
         return;
     }
+    if(!strcmp(argv[2] , "-n") && argv[3] == NULL)
+    {
+        printf("you didn't enter a number :/\n");
+        return;
+    }
+    //normal log
     if(argv[2] == NULL)
     {
         FILE *fp = fopen(globalCommitList , "r");
@@ -1336,7 +1342,32 @@ void Log(char **argv)
             printf("\n");
         }
     }
-    
+    //log with number
+    if(!strcmp(argv[2] , "-n") && argv[3] != NULL)
+    {
+        int number = atoi(argv[3]);
+        FILE *fp = fopen(globalCommitList , "r");
+        char lines[1000][1000];
+        int count = 0;
+        while (fgets(lines[count] , sizeof(lines[count]) , fp) != NULL)
+        {
+            count++;
+        }
+        fclose(fp);
+
+        for (int i = count - 1 ; i >= number; i--)
+        {
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            printf(GREEN"commit id : %s\n"RESET , commitId);
+            printf("commit message : %s\n" , commitMessage);
+            printf("commit time : %s\n" , commitTime);
+            printf("commit branch : %s\n" , commitBranch);
+            printf("commit username : %s\n" , commitUsername);
+            printf("commit file count : %s\n" , commitFileCount);
+            printf("\n");
+        }
+    }
 }
 void CommandFinder(char **argv)
 {
