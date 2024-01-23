@@ -16,6 +16,7 @@
 #define currentBranchTextFile ".niggit/branches/current-branch.txt"
 #define currentBranchName ".niggit/branches/current-branch-name.txt"
 #define totalCommitCount ".niggit/branches/commitCount.txt"
+#define globalCommitList ".niggit/commit-list.txt"
 //configs
 #define globalSettingAddress "/home/kshyst/.niggit-settings"
 #define localSettingAddress ".niggit/configs"
@@ -121,6 +122,18 @@ void ConfigUserName(int isGlobal , char* userName)
     else
     {
         configFile = fopen("/home/kshyst/.niggit-settings/global-username.txt" , "w");
+        if(configFile == NULL)
+        {
+            printf("Error opening file!\n");
+            return;
+        }
+        fprintf(configFile , "%s" , userName);
+        if (!opendir(".niggit-settings"))
+        {
+            system("mkdir .niggit-settings");
+        }
+        
+        configFile = fopen(localUserName , "w");
         if(configFile == NULL)
         {
             printf("Error opening file!\n");
@@ -1042,6 +1055,7 @@ void Branch(char **argv)
         printf("BRUH niggit is not initialized :/\n");
         return;
     }
+    //show branches
     if (argv[2] == NULL)
     {
         FILE *fp2 = fopen(".niggit/branches.txt" , "r");
@@ -1053,8 +1067,10 @@ void Branch(char **argv)
             printf("%s\n" , temp);
         }
     }
+    //create branch
     else
     {
+        //checks if we already have a branch with this name
         FILE *fp2 = fopen(branchesTextFile , "r");
         char line[1000];
         while (fgets(line , sizeof(line) , fp2) != NULL)
@@ -1067,10 +1083,10 @@ void Branch(char **argv)
                 printf("Hmmm Looks like a branch with given name already exists\n");
                 return;
             }
-            
         }
-        
         fclose(fp2);
+
+        //creating a new branch
 
         char dirStageCommand[1000] = "" , dirMakeCommand[1000] = "mkdir " , dirCommitCommand[1000] =""
             ,dirStageCurrent[1000] = "" , dirStageLatest[1000] = "";
@@ -1240,7 +1256,23 @@ void Commit(char **argv)
     fgets(currentBranchNameString , sizeof(currentBranchNameString) , fp5);
     fclose(fp5);
 
-    // write a code that deletes stages-current folder and creates a new one
+    //finds how many files are there in stage-current
+    int fileCount = 0;
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir (stagesCurrentAddress)) != NULL) 
+    {
+        while ((ent = readdir (dir)) != NULL) 
+        {
+            if (strstr(ent->d_name , ".") != NULL)
+            {
+                fileCount++;
+            }
+        }
+        closedir (dir);
+    }
+
+    //deletes stages-current folder and creates a new one
     char commandToDeleteStagesCurrent[1000] = "rm -r \"";
     strcat(commandToDeleteStagesCurrent , stagesCurrentAddress);
     strcat(commandToDeleteStagesCurrent , "\"");
@@ -1255,7 +1287,7 @@ void Commit(char **argv)
     strcat(commitList , currentBranch);
     strcat(commitList , "/commit-list.txt");
     FILE *commitListFp = fopen(commitList , "a");
-    fprintf(commitListFp , "%s-%s-%s-%s-%s\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername);
+    fprintf(commitListFp , "%s-%s-%s-%s-%s-%d\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername , fileCount);
 
     printf("you just Cummited ! shame...\n");
     printf("commit id : %s\n" , commitIdString);
@@ -1263,6 +1295,48 @@ void Commit(char **argv)
     printf("commit time : %s\n" , GetTime());
     printf("commit branch : %s\n" , currentBranchNameString);
     printf("commit username : %s\n" , commitUsername);
+    printf("commit file count : %d\n" , fileCount);
+
+    //store the last commit 
+
+    //add commit to global commit list
+    FILE *globalCommitListFp = fopen(globalCommitList , "a");
+    fprintf(globalCommitListFp , "%s-%s-%s-%s-%s-%d\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername , fileCount);
+    fclose(globalCommitListFp);
+
+}
+void Log(char **argv)
+{
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    if(argv[2] == NULL)
+    {
+        FILE *fp = fopen(globalCommitList , "r");
+        char lines[1000][1000];
+        int count = 0;
+        while (fgets(lines[count] , sizeof(lines[count]) , fp) != NULL)
+        {
+            count++;
+        }
+        fclose(fp);
+
+        for (int i = count - 1; i >= 0; i--)
+        {
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            printf(GREEN"commit id : %s\n"RESET , commitId);
+            printf("commit message : %s\n" , commitMessage);
+            printf("commit time : %s\n" , commitTime);
+            printf("commit branch : %s\n" , commitBranch);
+            printf("commit username : %s\n" , commitUsername);
+            printf("commit file count : %s\n" , commitFileCount);
+            printf("\n");
+        }
+    }
+    
 }
 void CommandFinder(char **argv)
 {
@@ -1339,6 +1413,10 @@ void CommandFinder(char **argv)
     else if (!strcmp(argv[1] , "commit"))
     {
         Commit(argv);
+    }
+    else if (!strcmp(argv[1] , "log"))
+    {
+        Log(argv);
     }
     //search for alias UNDONE
     else
