@@ -754,11 +754,10 @@ void Reset(char **argv)
                 // char tmp[1000] = "";
                 // strcat(tmp , x[0]);
                 // //strcat(tmp , "\"");
-                strcpy(x[2] , "\"");
+                line[strcspn(line, "\n")] = '\0';
                 strcat(x[2] , line);
-                strcat(x[2] , "\"");
 
-                //printf("%s\n" , x[2]);
+                //  printf("%s\n" , x[2]);
                 if (strcmp(x[2] , "-"))
                 {
                     Reset(x);
@@ -923,6 +922,7 @@ void Reset(char **argv)
             strcat(command , argv[2]);
             strcat(command , "\" 2> .niggit/error.log");
             system(command);
+            // printf("%s" , command);
             printf("File Unstaged :))\n");
         }
         else
