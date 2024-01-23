@@ -6,20 +6,26 @@
 #include <time.h> 
 #include <sys/types.h>
 
-#define globalSettingAddress "/home/kshyst/.niggit-settings"
-#define localSettingAddress ".niggit/configs"
-#define localAliasAddress ".niggit/configs/local-alias.txt"
-#define globalAliasAddress "/home/kshyst/.niggit-settings/global-alias.txt"
-#define branchesAddress ".niggit/branches"
-#define masterAddress ".niggit/branches/master"
 #define stagesCurrentAddress ".niggit/.stages/stages-current"
 #define latestStageTextFile ".niggit/.stages/stages-latest.txt"
 #define stageCount ".niggit/.stages/stages-count.txt"
 //branch
+#define branchesAddress ".niggit/branches"
+#define masterAddress ".niggit/branches/master"
 #define branchesTextFile ".niggit/branches/branches.txt"
 #define currentBranchTextFile ".niggit/branches/current-branch.txt"
+#define currentBranchName ".niggit/branches/current-branch-name.txt"
 #define totalCommitCount ".niggit/branches/commitCount.txt"
-
+//configs
+#define globalSettingAddress "/home/kshyst/.niggit-settings"
+#define localSettingAddress ".niggit/configs"
+#define globalAliasAddress "/home/kshyst/.niggit-settings/global-alias.txt"
+#define localAliasAddress ".niggit/configs/local-alias.txt"
+#define globalUserName "/home/kshyst/.niggit-settings/global-username.txt"
+#define globalUserEmail "/home/kshyst/.niggit-settings/global-userEmail.txt"
+#define localUserName ".niggit-settings/local-username.txt"
+#define localUserEmail ".niggit-settings/local-userEmail.txt"
+//colors
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
 #define RESET "\033[0m"
@@ -38,8 +44,11 @@ char* GetTime()
     time_t t = time(NULL); 
   
     local = localtime(&t); 
+
+    char* time = (char*)(malloc(1000));
+    sprintf(time , "%d,%d,%d,%d,%d,%d" , local->tm_year + 1900 , local->tm_mon + 1 , local->tm_mday , local->tm_hour , local->tm_min , local->tm_sec);
   
-    return asctime(local);
+    return time;
 }
 int isFolderEmpty(const char *path) {
     DIR *dir = opendir(path);
@@ -95,7 +104,12 @@ void ConfigUserName(int isGlobal , char* userName)
     FILE* configFile;
     if (!isGlobal)
     {
-        configFile = fopen(".niggit/configs/local-username.txt" , "w");
+        if (!opendir(".niggit-settings"))
+        {
+            system("mkdir .niggit-settings");
+        }
+        
+        configFile = fopen(localUserName , "w");
         if(configFile == NULL)
         {
             printf("Error opening file!\n");
@@ -122,7 +136,11 @@ void ConfigUserEmail(int isGlobal , char* userEmail)
     FILE* configFile;
     if (!isGlobal)
     {
-        configFile = fopen(".niggit/configs/local-userEmail.txt" , "w");
+        if (!opendir(".niggit-settings"))
+        {
+            system("mkdir .niggit-settings");
+        }
+        configFile = fopen(localUserEmail , "w");
         if(configFile == NULL)
         {
             printf("Error opening file!\n");
@@ -262,6 +280,10 @@ void Init()
         fprintf(fp7 , "0");
         fclose(fp7);
 
+        FILE *fp8 = fopen(currentBranchName , "w");
+        fprintf(fp8 , "master");
+        fclose(fp8);
+
         printf("niggit reinitialized! :)\n");
     }
     else
@@ -300,6 +322,10 @@ void Init()
         fprintf(fp7 , "0");
         fclose(fp7);
         
+        FILE *fp8 = fopen(currentBranchName , "w");
+        fprintf(fp8 , "master");
+        fclose(fp8);
+
         printf("niggit initialized! :)\n");
     }  
 }
@@ -1101,7 +1127,7 @@ void Commit(char **argv)
         printf("BRUH niggit is not initialized :/\n");
         return;
     }
-    if (strcmp(argv[2] , "-m") || argv[2] == NULL)
+    if (strcmp(argv[2] , "-m") || (argv[2] == NULL))
     {
         printf("BRUH you entered wrong command for commit :/\n");
         return;
@@ -1116,7 +1142,11 @@ void Commit(char **argv)
         printf("You Didn't fucking stage anything what are you trying to commit ???????\n");
         return;
     }
-    
+    if ((fopen(localUserName , "r") == NULL) && (fopen(globalUserName , "r") == NULL))
+    {
+        printf("you didn't set your username :/\n");
+        return;
+    }
     //getting the commit message
     char commitMessage[1000] = "";
     strcat(commitMessage , argv[3]);
@@ -1172,17 +1202,67 @@ void Commit(char **argv)
     strcat(newName , commitIdString);
     rename(renameTheStageToCommitHash , newName);
 
+    //get local username and global username
+    char localUserNameString[1000] = "";
+    char globalUserNameString[1000] = "";
+    
+    FILE *fp3 = fopen(localUserName , "r");
+    if (fp3 == NULL)
+    {
+        FILE *fp4 = fopen(globalUserName , "r");
+        fgets(globalUserNameString , sizeof(globalUserNameString) , fp4);
+        fclose(fp4);
+    }
+    else
+    {
+        fgets(localUserNameString , sizeof(localUserNameString) , fp3);
+        fclose(fp3);
+    }
+
+    char commitUsername[1000] = "";
+    if (localUserNameString[0] != '\0')
+    {
+        strcat(commitUsername , localUserNameString);
+    }
+    else if (globalUserNameString[0] != '\0')
+    {
+        strcat(commitUsername , globalUserNameString);
+    }
+    else
+    {
+        printf("BRUH you didn't set your username :/\n");
+        return;
+    }
+
+    // get current branch name
+    char currentBranchNameString[1000] = "";
+    FILE *fp5 = fopen(currentBranchName , "r");
+    fgets(currentBranchNameString , sizeof(currentBranchNameString) , fp5);
+    fclose(fp5);
+
+    // write a code that deletes stages-current folder and creates a new one
+    char commandToDeleteStagesCurrent[1000] = "rm -r \"";
+    strcat(commandToDeleteStagesCurrent , stagesCurrentAddress);
+    strcat(commandToDeleteStagesCurrent , "\"");
+    system(commandToDeleteStagesCurrent);
+    char commandToCreateNewStagesCurrent[1000] = "mkdir \"";
+    strcat(commandToCreateNewStagesCurrent , stagesCurrentAddress);
+    strcat(commandToCreateNewStagesCurrent , "\"");
+    system(commandToCreateNewStagesCurrent);
+
     //add the commit to the commit list of current branch
     char commitList[1000] = "";
     strcat(commitList , currentBranch);
     strcat(commitList , "/commit-list.txt");
     FILE *commitListFp = fopen(commitList , "a");
-    fprintf(commitListFp , "%s-%s-%s" , commitIdString , commitMessage , GetTime());
+    fprintf(commitListFp , "%s-%s-%s-%s-%s\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername);
 
     printf("you just Cummited ! shame...\n");
     printf("commit id : %s\n" , commitIdString);
     printf("commit message : %s\n" , commitMessage);
-    printf("commit time : %s" , GetTime());
+    printf("commit time : %s\n" , GetTime());
+    printf("commit branch : %s\n" , currentBranchNameString);
+    printf("commit username : %s\n" , commitUsername);
 }
 void CommandFinder(char **argv)
 {
