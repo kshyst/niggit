@@ -22,7 +22,7 @@
 #define globalSettingAddress "/home/kshyst/.niggit-settings"
 #define localSettingAddress ".niggit/configs"
 #define globalAliasAddress "/home/kshyst/.niggit-settings/global-alias.txt"
-#define localAliasAddress ".niggit/configs/local-alias.txt"
+#define localAliasAddress ".niggit-settings/local-alias.txt"
 #define globalUserName "/home/kshyst/.niggit-settings/global-username.txt"
 #define globalUserEmail "/home/kshyst/.niggit-settings/global-userEmail.txt"
 #define localUserName ".niggit-settings/local-username.txt"
@@ -205,20 +205,24 @@ void ConfigUserEmail(int isGlobal , char* userEmail)
     fclose(configFile);
 }
 void ConfigAlias(int isGlobal , char** argv)
-{
+{   
     char alias[1000] = "";
     char aliasFor[1000] = "";
 
     if (isGlobal)
     {
+        if ((argv[4] == NULL) || (strstr(argv[3] , ".") == NULL))
+        {
+            printf("you didn't enter the alias name or the alias for :/\n");
+            return;
+        }
         char temp[1000] = "";
         sscanf(argv[3] , "alias.%[^\n]%*c" , temp);
         strcat(alias , temp);
         strcat(aliasFor , argv[4]);
 
         char command[1000] = "";
-        strcat(command , globalSettingAddress);
-        strcat(command , "/global-alias.txt");
+        strcat(command , globalAliasAddress);
         FILE* configFile = fopen(command , "a");
         if(configFile == NULL)
         {
@@ -229,14 +233,18 @@ void ConfigAlias(int isGlobal , char** argv)
     }
     else
     {
+        if ((argv[3] == NULL) || (strstr(argv[2] , ".") == NULL))
+        {
+            printf("you didn't enter the alias name or the alias for :/\n");
+            return;
+        }
         char temp[1000] = "";
         sscanf(argv[2] , "alias.%[^\n]%*c" , temp);
         strcat(alias , temp);
         strcat(aliasFor , argv[3]);
 
         char command[1000] = "";
-        strcat(command , localSettingAddress);
-        strcat(command , "/local-alias.txt");
+        strcat(command , localAliasAddress);
         FILE* configFile = fopen(command , "a");
         if(configFile == NULL)
         {
@@ -245,8 +253,6 @@ void ConfigAlias(int isGlobal , char** argv)
         }
         fprintf(configFile , "%s-%s\n" , alias , aliasFor);
     }
-
-
 }
 void Init()
 {
@@ -1774,6 +1780,48 @@ void Log(char **argv)
         
     }
 }
+int Alias(char **argv)
+{
+    FILE* localAliasFile = fopen(localAliasAddress , "r");
+    FILE* globalAliasFile = fopen(globalAliasAddress , "r");
+
+    if (globalAliasFile == NULL && localAliasFile == NULL)
+    {
+        return;
+    }
+    
+    if (globalAliasFile != NULL)
+    {
+        char line[1000];
+        while (fgets(line , sizeof(line) , globalAliasFile) != NULL)
+        {
+            char alias[1000] , command[1000];
+            sscanf(line , "%[^-]%*c%[^\n]%*c" , alias , command);
+            if (!strcmp(argv[1] , alias))
+            {
+                system(command);
+                return 1;
+            }
+        }
+        fclose(globalAliasFile);
+    }
+    if (localAliasFile != NULL)
+    {
+        char line[1000];
+        while (fgets(line , sizeof(line) , localAliasFile) != NULL)
+        {
+            char alias[1000] , command[1000];
+            sscanf(line , "%[^-]%*c%[^\n]%*c" , alias , command);
+            if (!strcmp(argv[1] , alias))
+            {
+                system(command);
+                return 1;
+            }
+        }
+        fclose(localAliasFile);
+    }
+    return 0;
+}
 void CommandFinder(char **argv)
 {
     if (!strcmp(argv[1] , "help"))
@@ -1854,9 +1902,11 @@ void CommandFinder(char **argv)
     {
         Log(argv);
     }
-    //search for alias UNDONE
     else
     {
-        printf("BRUH you entered a wrong command :/\n");
+        if (!Alias(argv))
+        {
+            printf("BRUH you entered a wrong command :/\n");
+        }
     }   
 }
