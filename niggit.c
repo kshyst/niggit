@@ -1368,6 +1368,108 @@ void Log(char **argv)
             printf("\n");
         }
     }
+    //log with author name
+    if (!strcmp(argv[2] , "-author"))
+    {
+        if (argv[3] == NULL)
+        {
+            printf("you didn't enter an author name :/\n");
+            return;
+        }
+        FILE *fp = fopen(globalCommitList , "r");
+        char lines[1000][1000];
+        int count = 0;
+        int isAuthorFound = 0;
+        while (fgets(lines[count] , sizeof(lines[count]) , fp) != NULL)
+        {
+            count++;
+        }
+        fclose(fp);
+
+        for (int i = count - 1; i >= 0; i--)
+        {
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            if (!strcmp(commitUsername , argv[3]))
+            {
+                isAuthorFound = 1;
+                printf(GREEN"commit id : %s\n"RESET , commitId);
+                printf("commit message : %s\n" , commitMessage);
+                printf("commit time : %s\n" , commitTime);
+                printf("commit branch : %s\n" , commitBranch);
+                printf("commit username : %s\n" , commitUsername);
+                printf("commit file count : %s\n" , commitFileCount);
+                printf("\n");
+            }
+        }
+
+        if (!isAuthorFound)
+        {
+            printf("we didn't find any commit with this author :/\n");
+        }
+    }
+    //log with branch name
+    //log with since
+    if (!strcmp(argv[2] , "-since"))
+    {
+        
+        
+    }
+    //log with until
+    if (!strcmp(argv[2] , "-before"))
+    {
+        
+        
+    }
+    //log with a word to search for
+    if (!strcmp(argv[2] , "-search"))
+    {
+        if (argv[2] == NULL)
+        {
+            printf("you didn't enter a word to search for :/\n");
+            return;
+        }
+        
+        FILE *fp = fopen(globalCommitList , "r");
+        char lines[1000][1000];
+        int count = 0;
+        int isWordFound = 0;
+        while (fgets(lines[count] , sizeof(lines[count]) , fp) != NULL)
+        {
+            count++;
+        }
+        fclose(fp);
+
+        for (int i = count - 1; i >= 0; i--)
+        {
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            
+            int indForArgv = 3;
+            while (argv[indForArgv] != NULL)
+            {
+                if (strstr(commitMessage , argv[indForArgv]) != NULL)
+                {
+                    isWordFound = 1;
+                    printf(GREEN"commit id : %s\n"RESET , commitId);
+                    printf("commit message : %s\n" , commitMessage);
+                    printf("commit time : %s\n" , commitTime);
+                    printf("commit branch : %s\n" , commitBranch);
+                    printf("commit username : %s\n" , commitUsername);
+                    printf("commit file count : %s\n" , commitFileCount);
+                    printf("\n");
+                    break;
+                }
+                indForArgv++;
+            }
+        }
+        
+        if (!isWordFound)
+        {
+            printf("we didn't find any commit with this(these) word(s) :/\n");
+        }
+        
+    }
 }
 void CommandFinder(char **argv)
 {
