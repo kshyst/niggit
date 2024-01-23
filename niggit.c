@@ -17,7 +17,8 @@
 #define currentBranchTextFile ".niggit/branches/current-branch.txt"
 #define currentBranchName ".niggit/branches/current-branch-name.txt"
 #define totalCommitCount ".niggit/branches/commitCount.txt"
-#define globalCommitList ".niggit/commit-list.txt"
+#define globalCommitList ".niggit/branches/commit-list.txt"
+#define commitShortcuts ".niggit/branches/commit-shortcuts.txt"
 //configs
 #define globalSettingAddress "/home/kshyst/.niggit-settings"
 #define localSettingAddress ".niggit/configs"
@@ -331,6 +332,9 @@ void Init()
         FILE *fp8 = fopen(currentBranchName , "w");
         fprintf(fp8 , "master");
         fclose(fp8);
+        
+        FILE *fp9 = fopen(commitShortcuts , "w");
+        fclose(fp9);
 
         printf("niggit reinitialized! :)\n");
     }
@@ -373,6 +377,9 @@ void Init()
         FILE *fp8 = fopen(currentBranchName , "w");
         fprintf(fp8 , "master");
         fclose(fp8);
+
+        FILE *fp9 = fopen(commitShortcuts , "w");
+        fclose(fp9);
 
         printf("niggit initialized! :)\n");
     }  
@@ -1171,11 +1178,161 @@ void Status(char **argv)
         return;
     }
 }
+void SetCommitShortCut(char **argv)
+{
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    if (strcmp(argv[2] , "-m") || (!argv[2])|| (!argv[3]) || (strcmp(argv[4] , "-s")) || (!argv[5]) || (!argv[4]))
+    {
+        printf("wrong command for set :/\n");
+        return;
+    }
+    
+    FILE *fp = fopen(commitShortcuts , "a");
+    fprintf(fp , "%s-%s\n" , argv[3] , argv[5]);
+    fclose(fp);
+
+    printf("shortcut set :))\n");
+}
+void RemoveCommitShortCut(char **argv)
+{
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    if (strcmp(argv[2] , "-s") || (!argv[2])|| (!argv[3]))
+    {
+        printf("wrong command for remove :/\n");
+        return;
+    }
+    
+    FILE *fp = fopen(commitShortcuts , "r");
+    char line[1000];
+    char temp[1000] = "";
+    int isShortCutFound = 0;
+    strcat(temp , argv[3]);
+    char temp2[1000] = "";
+    while (fgets(line , sizeof(line) , fp) != NULL)
+    {
+        char shortcutMessage[1000] = "";
+        char shortcutShortcut[1000] = "";
+        sscanf(line , "%[^-]%*c%[^\n]%*c" , shortcutMessage , shortcutShortcut);
+        if (strstr(shortcutShortcut , temp) != NULL)
+        {
+            isShortCutFound = 1;
+            continue;
+        }
+        strcat(temp2 , line);
+    }
+    fclose(fp);
+    fp = fopen(commitShortcuts , "w");
+    fprintf(fp , "%s" , temp2);
+    fclose(fp);
+
+    if (!isShortCutFound)
+    {
+        printf("the shortcut doesn't exists :/\n");
+        return;
+    }
+    printf("shortcut removed :))\n");
+    
+}
+void ReplaceCommitShortCut(char **argv)
+{
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    if (strcmp(argv[2] , "-m") || (!argv[2])|| (!argv[3]) || (!argv[4]) || (strcmp(argv[4] , "-s") || (!argv[5])))
+    {
+        printf("wrong command for replace :/\n");
+        return;
+    }
+    
+    FILE *fp = fopen(commitShortcuts , "r");
+    char line[1000];
+    char temp[1000] = "";
+    int isShortCutFound = 0;
+    strcat(temp , argv[5]);
+    char temp2[1000] = "";
+    while (fgets(line , sizeof(line) , fp) != NULL)
+    {
+        char shortcutMessage[1000] = "";
+        char shortcutShortcut[1000] = "";
+        sscanf(line , "%[^-]%*c%[^\n]%*c" , shortcutMessage , shortcutShortcut);
+        if (!strcmp(shortcutShortcut , temp))
+        {
+            isShortCutFound = 1;
+            strcat(temp2 , argv[3]);
+            strcat(temp2 , "-");
+            strcat(temp2 , argv[5]);
+            strcat(temp2 , "\n");
+            continue;
+        }
+        strcat(temp2 , line);
+    }
+    fclose(fp);
+    fp = fopen(commitShortcuts , "w");
+    fprintf(fp , "%s" , temp2);
+    fclose(fp);
+
+    if (!isShortCutFound)
+    {
+        printf("the shortcut doesn't exists :/\n");
+        return;
+    }
+    printf("shortcut replaced :))\n");
+    
+
+}
 void Commit(char **argv)
 {
     if (IsNiggitInitialized() == 0)
     {
         printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    if (!strcmp(argv[2] , "-s"))
+    {
+        if (argv[3] == NULL)
+        {
+            printf("BRUH you didn't enter a shorcut :/\n");
+            return;
+        }
+        FILE *fp = fopen(commitShortcuts , "r");
+        char line[1000];
+        char temp[1000] = "";
+        int isShortCutFound = 0;
+        strcat(temp , argv[3]);
+        char temp2[1000] = "";
+        while (fgets(line , sizeof(line) , fp) != NULL)
+        {
+            char shortcutMessage[1000] = "";
+            char shortcutShortcut[1000] = "";
+            sscanf(line , "%[^-]%*c%[^\n]%*c" , shortcutMessage , shortcutShortcut);
+            if (!strcmp(shortcutShortcut , temp))
+            {
+                isShortCutFound = 1;
+                strcat(temp2 , shortcutMessage);
+                break;
+            }
+        }
+        fclose(fp);
+        if (!isShortCutFound)
+        {
+            printf("the shortcut doesn't exists :/\n");
+            return;
+        }
+        
+        char commad[1000] = "niggit commit -m \"";
+        strcat(commad , temp2);
+        strcat(commad , "\"");
+        system(commad);
         return;
     }
     if (strcmp(argv[2] , "-m") || (argv[2] == NULL))
@@ -1893,6 +2050,18 @@ void CommandFinder(char **argv)
     else if (!strcmp(argv[1] , "status"))
     {
         Status(argv);
+    }
+    else if (!strcmp(argv[1] , "set"))
+    {
+        SetCommitShortCut(argv);
+    }
+    else if (!strcmp(argv[1] , "remove"))
+    {
+        RemoveCommitShortCut(argv);
+    }
+    else if (!strcmp(argv[1] , "replace"))
+    {
+        ReplaceCommitShortCut(argv);
     }
     else if (!strcmp(argv[1] , "commit"))
     {
