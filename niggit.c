@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <time.h> 
+#include <sys/types.h>
 
 #define globalSettingAddress "/home/kshyst/.niggit-settings"
 #define localSettingAddress ".niggit/configs"
@@ -13,6 +15,10 @@
 #define stagesCurrentAddress ".niggit/.stages/stages-current"
 #define latestStageTextFile ".niggit/.stages/stages-latest.txt"
 #define stageCount ".niggit/.stages/stages-count.txt"
+//branch
+#define branchesTextFile ".niggit/branches/branches.txt"
+#define currentBranchTextFile ".niggit/branches/current-branch.txt"
+#define totalCommitCount ".niggit/branches/commitCount.txt"
 
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
@@ -20,11 +26,45 @@
 
 //Function Prototypes
 void CommandFinder(char **argv);
+char* GetTime();
 int main(int argc, char **argv)
 {
     CommandFinder(argv);
 }
 //Functions
+char* GetTime()
+{
+    struct tm* local; 
+    time_t t = time(NULL); 
+  
+    local = localtime(&t); 
+  
+    return asctime(local);
+}
+int isFolderEmpty(const char *path) {
+    DIR *dir = opendir(path);
+
+    if (dir == NULL) {
+        perror("Error opening directory");
+        exit(EXIT_FAILURE);
+    }
+
+    struct dirent *entry;
+    int isEmpty = 1; // Assume folder is empty initially
+
+    // Read each entry in the directory
+    while ((entry = readdir(dir)) != NULL) {
+        // Ignore "." and ".." entries
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            isEmpty = 0; // Folder is not empty
+            break;
+        }
+    }
+
+    closedir(dir);
+
+    return isEmpty;
+}
 int IsNiggitInitialized()
 {
     if (opendir(".niggit") == NULL)
@@ -196,10 +236,10 @@ void Init()
         system("mkdir .niggit/branches/master/.commits");
         
         FILE *fp = fopen(".niggit/head.txt" , "w");
-        fprintf(fp , "HEAD=.niggit/branches/master\n");
+        fprintf(fp , "HEAD=.niggit/branches/master\n");  //UNDONE
         fclose(fp);
 
-        FILE *fp2 = fopen(".niggit/branches.txt" , "w");
+        FILE *fp2 = fopen(branchesTextFile , "w");
         fprintf(fp2 , "master-.niggit/branches/master\n");
         fclose(fp2);
 
@@ -210,6 +250,17 @@ void Init()
         FILE *fp4 = fopen(".niggit/.stages/stages-count.txt" , "w");
         fprintf(fp4 , "0\n");
         fclose(fp4);
+
+        FILE *fp5 = fopen(currentBranchTextFile , "w");
+        fprintf(fp5 , ".niggit/branches/master");
+        fclose(fp5);
+
+        FILE *fp6 = fopen(".niggit/branches/master/commit-list.txt" , "w");
+        fclose(fp6);
+
+        FILE *fp7 = fopen(totalCommitCount , "w");
+        fprintf(fp7 , "0");
+        fclose(fp7);
 
         printf("niggit reinitialized! :)\n");
     }
@@ -233,6 +284,21 @@ void Init()
 
         FILE *fp3 = fopen(".niggit/.stages/stages-latest.txt" , "w");
         fclose(fp3);
+
+        FILE *fp4 = fopen(".niggit/.stages/stages-count.txt" , "w");
+        fprintf(fp4 , "0\n");
+        fclose(fp4);
+
+        FILE *fp5 = fopen(currentBranchTextFile , "w");
+        fprintf(fp5 , ".niggit/branches/master");
+        fclose(fp5);
+
+        FILE *fp6 = fopen(".niggit/branches/master/commit-list.txt" , "w");
+        fclose(fp6);
+
+        FILE *fp7 = fopen(totalCommitCount , "w");
+        fprintf(fp7 , "0");
+        fclose(fp7);
         
         printf("niggit initialized! :)\n");
     }  
@@ -963,7 +1029,7 @@ void Branch(char **argv)
     }
     else
     {
-        FILE *fp2 = fopen(".niggit/branches.txt" , "r");
+        FILE *fp2 = fopen(branchesTextFile , "r");
         char line[1000];
         while (fgets(line , sizeof(line) , fp2) != NULL)
         {
@@ -992,7 +1058,7 @@ void Branch(char **argv)
         strcat(newHeadDir , "/");
         strcat(newHeadDir , argv[2]);
 
-        FILE *branchesFp = fopen(".niggit/branches.txt" , "a");
+        FILE *branchesFp = fopen(branchesTextFile , "a");
         char newBranchName[1000]="";
         strcat(newBranchName , argv[2]);
         strcat(newBranchName , "-");
@@ -1027,6 +1093,96 @@ void Status(char **argv)
         printf("BRUH niggit is not initialized :/\n");
         return;
     }
+}
+void Commit(char **argv)
+{
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    if (strcmp(argv[2] , "-m") || argv[2] == NULL)
+    {
+        printf("BRUH you entered wrong command for commit :/\n");
+        return;
+    }
+    if (argv[3] == NULL)
+    {
+        printf("BRUH you didn't enter a commit message :/\n");
+        return;
+    }
+    if (isFolderEmpty(stagesCurrentAddress))
+    {
+        printf("You Didn't fucking stage anything what are you trying to commit ???????\n");
+        return;
+    }
+    
+    //getting the commit message
+    char commitMessage[1000] = "";
+    strcat(commitMessage , argv[3]);
+    if (strlen(argv[3]) > 72)
+    {
+        printf("commit message tooooo long :(((\n");
+        return;
+    }
+
+    //get the total commit counts till now for creating commit id
+    FILE *fp = fopen(totalCommitCount , "r");
+    int count ;
+    fscanf(fp , "%d" , &count);
+    fclose(fp);
+
+    //adding 1 to total commit count
+
+    FILE *fp1 = fopen(totalCommitCount , "w");
+    fprintf(fp1 , "%d" , count + 1);
+    fclose(fp1);
+
+    //get the current branch to create the folder commit inside it
+    FILE *fp2 = fopen(currentBranchTextFile , "r");
+    char currentBranch[1000] = "";
+    fscanf(fp2 , "%s" , currentBranch);
+    fclose(fp2);
+
+    //create commit id
+    int commitId = count+1;
+
+    //create commit folder
+    char commitFolder[1000] = "";
+    strcat(commitFolder , currentBranch);
+    strcat(commitFolder , "/.commits/");
+
+    char commitIdString[1000] = "#";
+    char temp[1000] = "";
+    sprintf(temp , "%d" , commitId);
+    strcat(commitIdString , temp);
+
+    char commandToCpyStagesInCommits[1000] = "cp -r \"";
+    strcat(commandToCpyStagesInCommits , stagesCurrentAddress);
+    strcat(commandToCpyStagesInCommits , "\" \"");
+    strcat(commandToCpyStagesInCommits , commitFolder);
+    strcat(commandToCpyStagesInCommits , "\"");
+    system(commandToCpyStagesInCommits);
+
+    char renameTheStageToCommitHash[1000] = "";
+    strcat(renameTheStageToCommitHash , commitFolder);
+    strcat(renameTheStageToCommitHash , "stages-current");
+    char newName[1000] = "";
+    strcat(newName , commitFolder);
+    strcat(newName , commitIdString);
+    rename(renameTheStageToCommitHash , newName);
+
+    //add the commit to the commit list of current branch
+    char commitList[1000] = "";
+    strcat(commitList , currentBranch);
+    strcat(commitList , "/commit-list.txt");
+    FILE *commitListFp = fopen(commitList , "a");
+    fprintf(commitListFp , "%s-%s-%s" , commitIdString , commitMessage , GetTime());
+
+    printf("you just Cummited ! shame...\n");
+    printf("commit id : %s\n" , commitIdString);
+    printf("commit message : %s\n" , commitMessage);
+    printf("commit time : %s" , GetTime());
 }
 void CommandFinder(char **argv)
 {
@@ -1099,6 +1255,10 @@ void CommandFinder(char **argv)
     else if (!strcmp(argv[1] , "status"))
     {
         Status(argv);
+    }
+    else if (!strcmp(argv[1] , "commit"))
+    {
+        Commit(argv);
     }
     //search for alias UNDONE
     else
