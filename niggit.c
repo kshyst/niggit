@@ -2098,7 +2098,6 @@ void CheckOut(char **argv)
         FILE* latestCommitsTxt = fopen(txtAddress , "r");
         fgets(latestCommitOfTheBranchAddress , sizeof(latestCommitOfTheBranchAddress) , latestCommitsTxt);
         fclose(latestCommitsTxt);
-        //printf("%s\n" , latestCommitOfTheBranchAddress);
         // make the parent as the checkout dir
         if (!strcmp(latestCommitOfTheBranchAddress , "\n") || !strcmp(latestCommitOfTheBranchAddress , ""))
         {
@@ -2142,9 +2141,40 @@ void CheckOut(char **argv)
                 }
             }
         }
+        // make the latest commit as checkout dir
         else
         {
-            // make the latest commit as checkout dir
+            char parentAddress[1000] = "";
+            strcat(parentAddress , latestCommitOfTheBranchAddress);
+
+            // copy every file exept the branch folder into the root next to niggit folder
+            char commandForFind[1000] = "find \"";
+            strcat(commandForFind, parentAddress);
+            strcat(commandForFind , "\"");
+            strcat(commandForFind , " 2> .niggit/error.log");
+            
+            rootAddress[strlen(rootAddress) - 1] = '\0';
+            FILE* tempForFind = popen(commandForFind , "r");
+            char line[1000];
+            while (fgets(line , sizeof(line) , tempForFind) != NULL)
+            {
+                line[strlen(line) - 1] = '\0';
+                if (!strcmp(line , parentAddress))
+                {
+                    continue;
+                }
+                
+                if (strstr(line + strlen(parentAddress) - 1 , "branch-") == NULL)
+                {
+                    char commandForCopy[1000] = "cp -r \"";
+                    strcat(commandForCopy , line);
+                    strcat(commandForCopy , "\" \"");
+                    strcat(commandForCopy , rootAddress);
+                    strcat(commandForCopy , "/\"");
+                    strcat(commandForCopy , " 2> .niggit/error.log");
+                    system(commandForCopy);
+                }
+            }
         }
 
         // change the current branch
@@ -2256,7 +2286,6 @@ void CommandFinder(char **argv)
     {
         CheckOut(argv);
     }
-    
     else
     {
         if (!Alias(argv))
