@@ -341,22 +341,23 @@ void Init()
     else
     {
         system("mkdir .niggit");
+        system("mkdir .niggit/configs");
         system("mkdir .niggit/branches");
         system("mkdir .niggit/branches/master");
         system("mkdir .niggit/.stages");
         system("mkdir .niggit/.stages/stages-current");
-        system("mkdir .niggit/.stages/stages-latest");
+        system("mkdir .niggit/branches/master/.commits");
+        
         FILE *fp = fopen(".niggit/head.txt" , "w");
-        //fopen(".niggit/latestStages.txt" , "w");
-
-        fprintf(fp , "HEAD=.niggit/branches/master\n");
+        fprintf(fp , "HEAD=.niggit/branches/master\n");  //UNDONE
         fclose(fp);
 
-        FILE *fp2 = fopen(".niggit/branches.txt" , "w");
+        FILE *fp2 = fopen(branchesTextFile , "w");
         fprintf(fp2 , "master-.niggit/branches/master\n");
         fclose(fp2);
 
         FILE *fp3 = fopen(".niggit/.stages/stages-latest.txt" , "w");
+        fprintf(fp3 , "-\n");
         fclose(fp3);
 
         FILE *fp4 = fopen(".niggit/.stages/stages-count.txt" , "w");
@@ -373,11 +374,11 @@ void Init()
         FILE *fp7 = fopen(totalCommitCount , "w");
         fprintf(fp7 , "0");
         fclose(fp7);
-        
+
         FILE *fp8 = fopen(currentBranchName , "w");
         fprintf(fp8 , "master");
         fclose(fp8);
-
+        
         FILE *fp9 = fopen(commitShortcuts , "w");
         fclose(fp9);
 
@@ -1100,7 +1101,7 @@ void Branch(char **argv)
     //show branches
     if (argv[2] == NULL)
     {
-        FILE *fp2 = fopen(".niggit/branches.txt" , "r");
+        FILE *fp2 = fopen(branchesTextFile , "r");
         char line[1000];
         while (fgets(line , sizeof(line) , fp2) != NULL)
         {
@@ -1130,42 +1131,70 @@ void Branch(char **argv)
 
         //creating a new branch
 
-        char dirStageCommand[1000] = "" , dirMakeCommand[1000] = "mkdir " , dirCommitCommand[1000] =""
-            ,dirStageCurrent[1000] = "" , dirStageLatest[1000] = "";
-        
-        strcat(dirMakeCommand , GetHead());
-        strcat(dirMakeCommand , "/");
-        strcat(dirMakeCommand , argv[2]);
+        char  latestCommitFInd[1000] = "" ;
+        FILE *fp = fopen(currentBranchTextFile , "r");
+        char currentBranch[1000] = "";
+        fgets(currentBranch , sizeof(currentBranch) , fp);
+        fclose(fp);
+        strcat(latestCommitFInd , currentBranch);
+        strcat(latestCommitFInd , "/");
+        strcat(latestCommitFInd , "latest-commit.txt");
+        fp = fopen(latestCommitFInd , "r");
+        char latestCommit[1000] = "";
+        fgets(latestCommit , sizeof(latestCommit) , fp);
+        fclose(fp);
 
-        char newHeadDir[1000] = "";
-        strcat(newHeadDir , GetHead());
-        strcat(newHeadDir , "/");
-        strcat(newHeadDir , argv[2]);
+        char makeFolder[1000] = "mkdir ";
+        char newBranchAddress[1000] = "";
+        strcat(newBranchAddress , latestCommit);
+        strcat(newBranchAddress , "/");
+        strcat(newBranchAddress , "branch-");
+        strcat(newBranchAddress , argv[2]);
 
-        FILE *branchesFp = fopen(branchesTextFile , "a");
-        char newBranchName[1000]="";
-        strcat(newBranchName , argv[2]);
-        strcat(newBranchName , "-");
-        strcat(newBranchName , newHeadDir);
-        fprintf(branchesFp , "%s\n" , newBranchName);
+        strcat(makeFolder , "\"");
+        strcat(makeFolder , newBranchAddress);
+        strcat(makeFolder , "\"");
+        system(makeFolder);
 
-        FILE *fp = fopen(".niggit/head.txt" , "w");
-        fprintf(fp , "HEAD=%s" , newHeadDir);
-        
-        strcat(dirStageCommand , dirMakeCommand);
-        strcat(dirStageCommand , "/.stages");
-        strcat(dirCommitCommand , dirMakeCommand);
-        strcat(dirCommitCommand , "/.commits");
-        strcat(dirStageCurrent , dirStageCommand);
-        strcat(dirStageCurrent , "/stages-current");
-        strcat(dirStageLatest , dirStageCommand);
-        strcat(dirStageLatest , "/stages-latest");
+        //adding the new branch to branches.txt
+        FILE *fp3 = fopen(branchesTextFile , "a");
+        fprintf(fp3 , "%s-%s\n" , argv[2] , newBranchAddress );
+        fclose(fp3);
 
-        system(dirMakeCommand);
-        //system(dirStageCommand);
-        system(dirCommitCommand);
-        //system(dirStageCurrent);
-        //system(dirStageLatest);
+        //adding the new branch to current branch
+        // FILE *fp4 = fopen(currentBranchTextFile , "w");
+        // fprintf(fp4 , "%s" , newBranchAddress);
+        // fclose(fp4);
+
+        //adding the new branch to current branch name
+        // FILE *fp5 = fopen(currentBranchName , "w");
+        // fprintf(fp5 , "%s" , argv[2]);
+        // fclose(fp5);
+
+        //creating the .commits folder for branch
+        char makeFolder2[1000] = "mkdir ";
+        strcat(makeFolder2 , "\"");
+        strcat(makeFolder2 , newBranchAddress);
+        strcat(makeFolder2 , "/");
+        strcat(makeFolder2 , ".commits");
+        strcat(makeFolder2 , "\"");
+        system(makeFolder2);
+
+        //creating the latest commit list
+        char makeFile[1000] = "";
+        strcat(makeFile , newBranchAddress);
+        strcat(makeFile , "/");
+        strcat(makeFile , "latest-commit.txt");
+        FILE *fp6 = fopen(makeFile , "w");
+        fclose(fp6);
+
+        //creating the commit list
+        char makeFile2[1000] = "";
+        strcat(makeFile2 , newBranchAddress);
+        strcat(makeFile2 , "/");
+        strcat(makeFile2 , "commit-list.txt");
+        FILE *fp7 = fopen(makeFile2 , "w");
+        fclose(fp7);
 
         printf("Guess What?! branch created :0\n");
     }
@@ -1491,6 +1520,14 @@ void Commit(char **argv)
 
     //store the last commit 
 
+    char latestCommitTextFileAddress[1000] = "";
+    strcat(latestCommitTextFileAddress , currentBranch);
+    strcat(latestCommitTextFileAddress , "/latest-commit.txt");
+
+    FILE* latestCommitTxtFile = fopen(latestCommitTextFileAddress , "w");
+    fprintf(latestCommitTxtFile , "%s" , newName);
+    fclose(latestCommitTxtFile);
+    
 
 }
 void Log(char **argv)
@@ -1979,6 +2016,150 @@ int Alias(char **argv)
     }
     return 0;
 }
+void CheckOut(char **argv)
+{
+    //checkout commit
+    if (strstr(argv[2] , "#"))
+    {
+        
+    }
+    //checkout HEAD
+    else if (!strcmp(argv[2] , "HEAD"))
+    {
+        
+    }
+    //checkout HEAD-n
+    else if (strstr(argv[2] , "HEAD-"))
+    {
+        
+    }
+    //checkout branch
+    else
+    {
+        //storing the name of the branch we want
+        char branchName[1000] = "";
+        strcat(branchName , argv[2]);
+
+        // finding the address of the root of the branch and check if the branch exists
+        char branchAddress[1000] = "";
+        FILE* branchesTxtFile = fopen(branchesTextFile , "r");
+        char bNames[1000];
+        int isBranchFound = 0;
+        while (fgets(bNames , sizeof(bNames) , branchesTxtFile))
+        {
+            char name[1000] , address[1000];
+            sscanf(bNames , "%[^-]%*c%[^\n]%*c" , name , address );
+            if (!strcmp(branchName , name))
+            {
+                strcat(branchAddress , address);
+                isBranchFound = 1;
+                break;
+            }
+        }
+
+        if (!isBranchFound)
+        {
+            printf("BRUH this branch doesn't exists :/\n");
+            return;
+        }
+
+        // delete every thing from root execpt .niggit and .niggit-settings
+        char rootAddress[1000] = "";
+        FILE* temp = popen("pwd" , "r");
+        fgets(rootAddress , sizeof(rootAddress) , temp);
+        
+        char commandForDelete[1000] = "find ";
+        strcat(commandForDelete , rootAddress);
+        strcat(commandForDelete , " 2> .niggit/error.log");
+
+        FILE* tempForDelete = popen(commandForDelete , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tempForDelete) != NULL)
+        {
+            if (!strcmp(line , rootAddress))
+            {
+                continue;
+            }
+            if (strstr(line , ".niggit") == NULL)
+            {
+                line[strlen(line) - 1] = '\0';
+                char commandForDelete2[1000] = "rm -r \"";
+                strcat(commandForDelete2 , line);
+                strcat(commandForDelete2 , "\"");
+                system(commandForDelete2);
+            }
+        }
+        
+        //getting the latest commit of the branch
+        char latestCommitOfTheBranchAddress[1000] = "";
+        char txtAddress[1000] = "";
+        strcat(txtAddress , branchAddress);
+        strcat(txtAddress , "/latest-commit.txt");
+        FILE* latestCommitsTxt = fopen(txtAddress , "r");
+        fgets(latestCommitOfTheBranchAddress , sizeof(latestCommitOfTheBranchAddress) , latestCommitsTxt);
+        fclose(latestCommitsTxt);
+        //printf("%s\n" , latestCommitOfTheBranchAddress);
+        // make the parent as the checkout dir
+        if (!strcmp(latestCommitOfTheBranchAddress , "\n") || !strcmp(latestCommitOfTheBranchAddress , ""))
+        {
+            char parentAddress[1000] = "";
+            strcat(parentAddress , branchAddress);
+            for (size_t i = strlen(parentAddress) - 1; i >= 0; i--)
+            {
+                if (parentAddress[i] == '/')
+                {
+                    parentAddress[i] = '\0';
+                    break;
+                }
+            }
+
+            // copy every file exept the branch folder into the root next to niggit folder
+            char commandForFind[1000] = "find \"";
+            strcat(commandForFind, parentAddress);
+            strcat(commandForFind , "\"");
+            strcat(commandForFind , " 2> .niggit/error.log");
+            
+            rootAddress[strlen(rootAddress) - 1] = '\0';
+            FILE* tempForFind = popen(commandForFind , "r");
+            char line[1000];
+            while (fgets(line , sizeof(line) , tempForFind) != NULL)
+            {
+                line[strlen(line) - 1] = '\0';
+                if (!strcmp(line , parentAddress))
+                {
+                    continue;
+                }
+                
+                if (strstr(line + strlen(parentAddress) - 1 , "branch-") == NULL)
+                {
+                    char commandForCopy[1000] = "cp -r \"";
+                    strcat(commandForCopy , line);
+                    strcat(commandForCopy , "\" \"");
+                    strcat(commandForCopy , rootAddress);
+                    strcat(commandForCopy , "/\"");
+                    strcat(commandForCopy , " 2> .niggit/error.log");
+                    system(commandForCopy);
+                }
+            }
+        }
+        else
+        {
+            // make the latest commit as checkout dir
+        }
+
+        // change the current branch
+        FILE* currentBranchTxt = fopen(currentBranchName , "w");
+        fprintf(currentBranchTxt , "%s" , branchName);
+        fclose(currentBranchTxt);
+
+        // change the current branch address
+        FILE* currentBranchAddressTxt = fopen(currentBranchTextFile , "w");
+        fprintf(currentBranchAddressTxt , "%s" , branchAddress);
+        fclose(currentBranchAddressTxt);
+
+        printf("you just checked out to %s branch !!!!\n" , branchName);
+    }
+}
 void CommandFinder(char **argv)
 {
     if (!strcmp(argv[1] , "help"))
@@ -2071,6 +2252,11 @@ void CommandFinder(char **argv)
     {
         Log(argv);
     }
+    else if (!strcmp(argv[1] , "checkout"))
+    {
+        CheckOut(argv);
+    }
+    
     else
     {
         if (!Alias(argv))
