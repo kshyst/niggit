@@ -260,6 +260,8 @@ void ConfigAlias(int isGlobal , char** argv)
         }
         fprintf(configFile , "%s-%s\n" , alias , aliasFor);
     }
+
+    printf("alias successfully added ! \n");
 }
 void Init()
 {
@@ -1563,7 +1565,6 @@ void Commit(char **argv)
         }
         if (strstr(line , ".niggit") == NULL)
         {
-            printf("%s\n" , line);
             char commandForCpy2[1000] = "cp -r \"";
             strcat(commandForCpy2 , line);
             strcat(commandForCpy2 , "\"");
@@ -1583,11 +1584,12 @@ void Commit(char **argv)
     char commandToFindAllInStageCurrent[1000] = "find ";
     strcat(commandToFindAllInStageCurrent , stagesCurrentAddress);
     strcat(commandToFindAllInStageCurrent , " -type f 2> .niggit/error.log");
-    FILE* tempForFindAllInStageCurrent = popen(commandToFindAllInStageCurrent , "r");
+    
     while (fgets(line2 , sizeof(line2) , tempForReplace) != NULL)
     {
         line2[strlen(line2) - 1] = '\0';
         //printf("%s\n" , line2 + strlen(stageForCommit) + 1);
+        FILE* tempForFindAllInStageCurrent = popen(commandToFindAllInStageCurrent , "r");
         char line3[1000];
         while (fgets(line3 , sizeof(line3) , tempForFindAllInStageCurrent) != NULL)
         {
@@ -1777,6 +1779,11 @@ void Commit(char **argv)
     FILE* latestCommitTxtFile2 = fopen(latestCommitTextFileAddress2 , "w");
     fprintf(latestCommitTxtFile2 , "%s" , newName);
     fclose(latestCommitTxtFile2);
+
+    // configure the head address
+    FILE* headTxt = fopen(headAddress , "w");
+    fprintf(headTxt , "%s" , newName);
+    fclose(headTxt);
 }
 void Log(char **argv)
 {
@@ -1791,7 +1798,7 @@ void Log(char **argv)
         return;
     }
     //normal log
-    if(argv[2] == NULL)
+    else if(argv[2] == NULL)
     {
         FILE *fp = fopen(globalCommitList , "r");
         char lines[1000][1000];
@@ -1848,7 +1855,7 @@ void Log(char **argv)
         }
     }
     //log with author name
-    if (!strcmp(argv[2] , "-author"))
+    else if (!strcmp(argv[2] , "-author"))
     {
         if (argv[3] == NULL)
         {
@@ -1888,7 +1895,7 @@ void Log(char **argv)
         }
     }
     //log with branch name
-    if (!strcmp(argv[2] , "-branch"))
+    else if (!strcmp(argv[2] , "-branch"))
     {
         //check if user entered branch name
         if (argv[3] == NULL)
@@ -1931,7 +1938,7 @@ void Log(char **argv)
         }
     }
     //log with since
-    if (!strcmp(argv[2] , "-since"))
+    else if (!strcmp(argv[2] , "-since"))
     {
         if (argv[3] == NULL)
         {
@@ -2076,7 +2083,7 @@ void Log(char **argv)
         }
     }
     //log with until
-    if (!strcmp(argv[2] , "-before"))
+    else if (!strcmp(argv[2] , "-before"))
     {
         if (argv[3] == NULL)
         {
@@ -2221,7 +2228,7 @@ void Log(char **argv)
         }
     }
     //log with a word to search for
-    if (!strcmp(argv[2] , "-search"))
+    else if (!strcmp(argv[2] , "-search"))
     {
         if (argv[2] == NULL)
         {
@@ -2268,6 +2275,11 @@ void Log(char **argv)
             printf("we didn't find any commit with this(these) word(s) :/\n");
         }
         
+    }
+    else
+    {
+        printf("wrong command for log!!!\n");
+        return;
     }
 }
 int Alias(char **argv)
@@ -2395,7 +2407,7 @@ void CheckOut(char **argv)
                 line[strlen(line) - 1] = '\0';
                 char commandForDelete2[1000] = "rm -r \"";
                 strcat(commandForDelete2 , line);
-                strcat(commandForDelete2 , "\"");
+                strcat(commandForDelete2 , "\" 2> .niggit/error.log");
                 system(commandForDelete2);
             }
         }
@@ -2699,9 +2711,26 @@ void CheckOut(char **argv)
         fgets(newHeadAddress , sizeof(newHeadAddress) , latestCommitsTxt2);
         fclose(latestCommitsTxt2);
 
-        FILE* headTxt = fopen(headAddress , "w");
-        fprintf(headTxt , "%s" , newHeadAddress);
-        fclose(headTxt);
+        if (!strcmp(newHeadAddress , "") || !strcmp(newHeadAddress , "\n"))
+        {
+            char tmp[1000] = "";
+            for (int i = 0; i < strlen(branchAddress) - strlen(argv[2]) - 8; i++)
+            {
+                char tmp2[2] = "";
+                tmp2[0] = branchAddress[i];
+                strcat(tmp , tmp2);
+            }
+            
+            FILE* headTxt = fopen(headAddress , "w");
+            fprintf(headTxt , "%s" , tmp);
+            fclose(headTxt);
+        }
+        else
+        {
+            FILE* headTxt = fopen(headAddress , "w");
+            fprintf(headTxt , "%s" , newHeadAddress);
+            fclose(headTxt);
+        }
 
         //print successful
 
