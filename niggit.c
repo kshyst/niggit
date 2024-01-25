@@ -10,6 +10,7 @@
 #define stagesCurrentAddress ".niggit/.stages/stages-current"
 #define latestStageTextFile ".niggit/.stages/stages-latest.txt"
 #define stageCount ".niggit/.stages/stages-count.txt"
+#define stageForCommit ".niggit/.stages/stages-for-commit"
 //branch
 #define branchesAddress ".niggit/branches"
 #define masterAddress ".niggit/branches/master"
@@ -20,6 +21,7 @@
 #define globalCommitList ".niggit/branches/commit-list.txt"
 #define commitShortcuts ".niggit/branches/commit-shortcuts.txt"
 #define canCommit ".niggit/branches/can-commit.txt"
+#define headAddress ".niggit/branches/head.txt"
 //configs
 #define globalSettingAddress "/home/kshyst/.niggit-settings"
 #define localSettingAddress ".niggit/configs"
@@ -42,7 +44,8 @@ int main(int argc, char **argv)
     CommandFinder(argv);
 }
 //Functions
-void count_files(char *base_path, int *file_count) {
+void count_files(char *base_path, int *file_count) 
+{
     char path[1000];
     struct dirent *dp;
     DIR *dir = opendir(base_path);
@@ -82,7 +85,8 @@ char* GetTime()
   
     return time;
 }
-int isFolderEmpty(const char *path) {
+int isFolderEmpty(const char *path) 
+{
     DIR *dir = opendir(path);
 
     if (dir == NULL) {
@@ -301,10 +305,10 @@ void Init()
         system("mkdir .niggit/branches/master");
         system("mkdir .niggit/.stages");
         system("mkdir .niggit/.stages/stages-current");
+        system("mkdir .niggit/.stages/stages-for-commit");
         system("mkdir .niggit/branches/master/.commits");
         
-        FILE *fp = fopen(".niggit/head.txt" , "w");
-        fprintf(fp , "HEAD=.niggit/branches/master\n");  //UNDONE
+        FILE *fp = fopen(headAddress , "w");
         fclose(fp);
 
         FILE *fp2 = fopen(branchesTextFile , "w");
@@ -341,6 +345,8 @@ void Init()
         fprintf(fp10 , "%d" , 1);
         fclose(fp10);
 
+
+
         printf("niggit reinitialized! :)\n");
     }
     else
@@ -351,10 +357,10 @@ void Init()
         system("mkdir .niggit/branches/master");
         system("mkdir .niggit/.stages");
         system("mkdir .niggit/.stages/stages-current");
+        system("mkdir .niggit/.stages/stages-for-commit");
         system("mkdir .niggit/branches/master/.commits");
         
-        FILE *fp = fopen(".niggit/head.txt" , "w");
-        fprintf(fp , "HEAD=.niggit/branches/master\n");  //UNDONE
+        FILE *fp = fopen(headAddress , "w");
         fclose(fp);
 
         FILE *fp2 = fopen(branchesTextFile , "w");
@@ -1415,14 +1421,95 @@ void Commit(char **argv)
         return;
     }
 
+    //put all files from the root into the stages for commit folder
+    char rootAddress[1000] = "";
+    FILE* temp1 = popen("pwd" , "r");
+    fgets(rootAddress , sizeof(rootAddress) , temp1);
+    rootAddress[strlen(rootAddress) - 1] = '\0';
+    char commandForCpy[1000] = "find \"";
+    strcat(commandForCpy , rootAddress);
+    strcat(commandForCpy , "\" -maxdepth 1 2>.niggit/error.log");
+    FILE* tempForCpy = popen(commandForCpy , "r");
+    char line[1000];
+    while (fgets(line , sizeof(line) , tempForCpy) != NULL)
+    {
+        line[strlen(line) - 1] = '\0';
+        if (!strcmp(line , rootAddress))
+        {
+            continue;
+        }
+        if (strstr(line , ".niggit") == NULL)
+        {
+            printf("%s\n" , line);
+            char commandForCpy2[1000] = "cp -r \"";
+            strcat(commandForCpy2 , line);
+            strcat(commandForCpy2 , "\"");
+            strcat(commandForCpy2 , " \"");
+            strcat(commandForCpy2 , stageForCommit);
+            strcat(commandForCpy2 , "\"");
+            system(commandForCpy2);
+        }
+    }
+    //if the file in stageForCommit is the same with the file in stages current replace it with the file in stages current
+    
+    char commandToReplace[1000] = "find ";
+    strcat(commandToReplace , stageForCommit);
+    strcat(commandToReplace , " -type f 2> .niggit/error.log");
+    FILE* tempForReplace = popen(commandToReplace , "r");
+    char line2[1000];
+    char commandToFindAllInStageCurrent[1000] = "find ";
+    strcat(commandToFindAllInStageCurrent , stagesCurrentAddress);
+    strcat(commandToFindAllInStageCurrent , " -type f 2> .niggit/error.log");
+    FILE* tempForFindAllInStageCurrent = popen(commandToFindAllInStageCurrent , "r");
+    while (fgets(line2 , sizeof(line2) , tempForReplace) != NULL)
+    {
+        line2[strlen(line2) - 1] = '\0';
+        //printf("%s\n" , line2 + strlen(stageForCommit) + 1);
+        char line3[1000];
+        while (fgets(line3 , sizeof(line3) , tempForFindAllInStageCurrent) != NULL)
+        {
+            line3[strlen(line3) - 1] = '\0';
+            // printf("%s\n" , line3);
+            // printf("%s\n" , line2);
+            // printf("----------\n");
+            if (!strcmp(line3 + strlen(stagesCurrentAddress) + 1 , line2 + strlen(stageForCommit) + 1))
+            {
+                
+                char commandToReplace2[1000] = "rm -f \"";
+                strcat(commandToReplace2 , line2);
+                strcat(commandToReplace2 , "\"");
+                system(commandToReplace2);
+
+                int txtLength = 0;
+                for (size_t i = strlen(line3)-1; i >=0; i--)
+                {
+                    if (line3[i] == '/')
+                    {
+                        break;
+                    }
+                    txtLength++;
+                }
+                
+                char commandToReplace3[1000] = "cp -r \"";
+                strcat(commandToReplace3 , line3);
+                strcat(commandToReplace3 , "\"");
+                strcat(commandToReplace3 , " \"");
+                strcat(commandToReplace3 , line2);
+                strcat(commandToReplace3 , "\"");
+                system(commandToReplace3);
+                break;
+            }
+        }  
+    }
+
     //finds how many files are there in stage-current
     int fileCount = 0;
-    count_files(stagesCurrentAddress, &fileCount);
-    if (fileCount == 0)
-    {
-        printf("You Didn't fucking stage anything what are you trying to commit ???????\n");
-        return;
-    }
+    count_files(stageForCommit, &fileCount);
+    // if (fileCount == 0)
+    // {
+    //     printf("You Didn't fucking stage anything what are you trying to commit ???????\n");
+    //     return;
+    // }
     
     //get the total commit counts till now for creating commit id
     FILE *fp = fopen(totalCommitCount , "r");
@@ -1456,7 +1543,7 @@ void Commit(char **argv)
     strcat(commitIdString , temp);
 
     char commandToCpyStagesInCommits[1000] = "cp -r \"";
-    strcat(commandToCpyStagesInCommits , stagesCurrentAddress);
+    strcat(commandToCpyStagesInCommits , stageForCommit);
     strcat(commandToCpyStagesInCommits , "\" \"");
     strcat(commandToCpyStagesInCommits , commitFolder);
     strcat(commandToCpyStagesInCommits , "\"");
@@ -1464,7 +1551,7 @@ void Commit(char **argv)
 
     char renameTheStageToCommitHash[1000] = "";
     strcat(renameTheStageToCommitHash , commitFolder);
-    strcat(renameTheStageToCommitHash , "stages-current");
+    strcat(renameTheStageToCommitHash , "stages-for-commit");
     char newName[1000] = "";
     strcat(newName , commitFolder);
     strcat(newName , commitIdString);
@@ -1518,6 +1605,16 @@ void Commit(char **argv)
     strcat(commandToCreateNewStagesCurrent , "\"");
     system(commandToCreateNewStagesCurrent);
 
+    //delets stages-for-commit folder and creates a new one
+    char commandToDeleteStagesForCommit[1000] = "rm -r \"";
+    strcat(commandToDeleteStagesForCommit , stageForCommit);
+    strcat(commandToDeleteStagesForCommit , "\"");
+    system(commandToDeleteStagesForCommit);
+    char commandToCreateNewStagesForCommit[1000] = "mkdir \"";
+    strcat(commandToCreateNewStagesForCommit , stageForCommit);
+    strcat(commandToCreateNewStagesForCommit , "\"");
+    system(commandToCreateNewStagesForCommit);
+
     //add the commit to the commit list of current branch
     char commitList[1000] = "";
     strcat(commitList , currentBranch);
@@ -1549,7 +1646,6 @@ void Commit(char **argv)
     FILE* latestCommitTxtFile = fopen(latestCommitTextFileAddress , "w");
     fprintf(latestCommitTxtFile , "%s" , newName);
     fclose(latestCommitTxtFile);
-    
 
 }
 void Log(char **argv)
@@ -2215,9 +2311,94 @@ void CheckOut(char **argv)
     //checkout HEAD
     else if (!strcmp(argv[2] , "HEAD"))
     {
+        // finding the address of the head
+        char commitAddress[1000] = "";
+        
+        FILE* head = fopen(headAddress , "r");
+        fgets(commitAddress , sizeof(commitAddress) , head);
+        fclose(head);
+
+        if (commitAddress == NULL)
+        {
+            printf("You don't have head:/\n");
+            return;
+        }
+
+        if (commitAddress[strlen(commitAddress) - 1] == '\n')
+        {
+            commitAddress[strlen(commitAddress) - 1] = '\0';
+        }
+        
+        // delete every thing from root execpt .niggit and .niggit-settings
+        char rootAddress[1000] = "";
+        FILE* temp = popen("pwd" , "r");
+        fgets(rootAddress , sizeof(rootAddress) , temp);
+
+        char commandForDelete[1000] = "find ";
+        strcat(commandForDelete , rootAddress);
+        strcat(commandForDelete , " 2> .niggit/error.log");
+
+        FILE* tempForDelete = popen(commandForDelete , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tempForDelete) != NULL)
+        {
+            if (!strcmp(line , rootAddress))
+            {
+                continue;
+            }
+            if (strstr(line , ".niggit") == NULL)
+            {
+                line[strlen(line) - 1] = '\0';
+                char commandForDelete2[1000] = "rm -r \"";
+                strcat(commandForDelete2 , line);
+                strcat(commandForDelete2 , "\"");
+                system(commandForDelete2);
+            }
+        }
+
+        // copy every file exept the branch folder into the root next to niggit folder
+        char commandForFind[1000] = "find \"";
+        strcat(commandForFind, commitAddress);
+        strcat(commandForFind , "\"");
+        strcat(commandForFind , " -maxdepth 1 2> .niggit/error.log");
+
+        rootAddress[strlen(rootAddress) - 1] = '\0';
+        FILE* tempForFind = popen(commandForFind , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , tempForFind) != NULL)
+        {
+            line2[strlen(line2) - 1] = '\0';
+            if (!strcmp(line2 , commitAddress))
+            {
+                continue;
+            }
+            
+            if (strstr(line2 + strlen(commitAddress) - 1 , "branch-") == NULL)
+            {
+                char commandForCopy[1000] = "cp -r \"";
+                strcat(commandForCopy , line2);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , rootAddress);
+                strcat(commandForCopy , "/\"");
+                strcat(commandForCopy , " 2> .niggit/error.log");
+                system(commandForCopy);
+            }
+        }
+
+        // make the head as checkout dir and enable commiting UNDONE
+
+        FILE *fp10 = fopen(canCommit , "w");
+        fprintf(fp10 , "%d" , 1);
+        fclose(fp10);
+
+        //print successful
+        printf("you just checked out to HEAD !\n");
+    }
+    //checkout HEAD-n n commits before head UNDONE
+    else if (strstr(argv[2] , "HEAD-"))
+    {
         
     }
-    //checkout HEAD-n
     else if (strstr(argv[2] , "HEAD-"))
     {
         
@@ -2275,6 +2456,7 @@ void CheckOut(char **argv)
                 char commandForDelete2[1000] = "rm -r \"";
                 strcat(commandForDelete2 , line);
                 strcat(commandForDelete2 , "\"");
+                strcat(commandForDelete2 , " 2> .niggit/error.log");
                 system(commandForDelete2);
             }
         }
@@ -2381,7 +2563,49 @@ void CheckOut(char **argv)
         fprintf(fp10 , "%d" , 1);
         fclose(fp10);
 
+        //put the latest commit of the branch address as the head
+        char newHeadAddress[1000] = "";
+        FILE* latestCommitsTxt2 = fopen(txtAddress , "r");
+        fgets(newHeadAddress , sizeof(newHeadAddress) , latestCommitsTxt2);
+        fclose(latestCommitsTxt2);
+
+        FILE* headTxt = fopen(headAddress , "w");
+        fprintf(headTxt , "%s" , newHeadAddress);
+        fclose(headTxt);
+
+        //print successful
+
         printf("you just checked out to %s branch !!!!\n" , branchName);
+    }
+}
+void Debug(char **argv)
+{
+    char rootAddress[1000] = "";
+    FILE* temp1 = popen("pwd" , "r");
+    fgets(rootAddress , sizeof(rootAddress) , temp1);
+    char commandForCpy[1000] = "find \"";
+    strcat(commandForCpy , rootAddress);
+    strcat(commandForCpy , "\" 2> .niggit/error.log");
+    FILE* tempForCpy = popen(commandForCpy , "r");
+    char line[1000];
+    while (fgets(line , sizeof(line) , tempForCpy) != NULL)
+    {
+            line[strlen(line) - 2] = '\0';
+            printf("%s\n" , line);
+        if (!strcmp(line , rootAddress))
+        {
+            continue;
+        }
+        if (strstr(line , ".niggit") == NULL)
+        {
+            char commandForCpy2[1000] = "cp -r \"";
+            strcat(commandForCpy2 , line);
+            strcat(commandForCpy2 , "\"");
+            strcat(commandForCpy2 , " \"");
+            strcat(commandForCpy2 , stageForCommit);
+            strcat(commandForCpy2 , "\"");
+            system(commandForCpy2);
+        }
     }
 }
 void CommandFinder(char **argv)
@@ -2479,6 +2703,10 @@ void CommandFinder(char **argv)
     else if (!strcmp(argv[1] , "checkout"))
     {
         CheckOut(argv);
+    }
+    else if (!strcmp(argv[1] , "debug"))
+    {
+        Debug(argv);
     }
     else
     {
