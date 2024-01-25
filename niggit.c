@@ -22,6 +22,7 @@
 #define commitShortcuts ".niggit/branches/commit-shortcuts.txt"
 #define canCommit ".niggit/branches/can-commit.txt"
 #define headAddress ".niggit/branches/head.txt"
+#define theLatestCommit ".niggit/branches/latest-commit.txt"
 //configs
 #define globalSettingAddress "/home/kshyst/.niggit-settings"
 #define localSettingAddress ".niggit/configs"
@@ -1221,6 +1222,128 @@ void Status(char **argv)
         printf("BRUH niggit is not initialized :/\n");
         return;
     }
+
+    // find all files in root
+    char rootAd[1000] = "";
+    FILE* tempForRootAddress = popen("pwd" , "r");
+    fgets(rootAd , sizeof(rootAd) , tempForRootAddress);
+    rootAd[strcspn(rootAd, "\n")] = 0;
+    pclose(tempForRootAddress);
+
+    char commandForFindAllFilesInRoot[1000] = "find ";
+    strcat(commandForFindAllFilesInRoot , rootAd);
+    strcat(commandForFindAllFilesInRoot , " -type f 2> .niggit/error.log");
+    FILE* tempForFindAllFilesInRoot = popen(commandForFindAllFilesInRoot , "r");
+    char line[1000];
+    int allFilesInRootCount = 0;
+    while (fgets(line , sizeof(line) , tempForFindAllFilesInRoot) != NULL)
+    {
+        //skip if its in niggit
+        if (strstr(line , ".niggit") != NULL)
+        {
+            continue;
+        }
+        //check if the file is in stages
+        line[strcspn(line, "\n")] = 0;
+        int isStaged = 0;
+        FILE* tempForFindAllFilesInStages = popen("find .niggit/.stages/stages-current -type f 2> .niggit/error.log" , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , tempForFindAllFilesInStages) != NULL)
+        {
+            line2[strcspn(line2, "\n")] = 0;
+            if (!strcmp(line + strlen(rootAd) + 1 , line2 + strlen(stagesCurrentAddress) + 1))
+            {
+                printf("%s" , "+");
+                isStaged = 1;
+                break;
+            }
+        }
+        if (!isStaged)
+        {
+            printf("%s" , "-");
+        }
+
+        //compare if it is unchanged or deleted or modified or added from last commit
+        char theLatestCommitAddress[1000] = "";
+        FILE *fp = fopen(theLatestCommit , "r");
+        fgets(theLatestCommitAddress , sizeof(theLatestCommitAddress) , fp);
+        char commandForFindAllFilesInLastCommit[1000] = "find \"";
+        strcat(commandForFindAllFilesInLastCommit , theLatestCommitAddress);
+        strcat(commandForFindAllFilesInLastCommit , "\" -type f 2> .niggit/error.log");
+
+        FILE* tempForFindAllFilesInLastCommit = popen(commandForFindAllFilesInLastCommit , "r");
+        char line3[1000];
+        int isFileInLastCommit = 0;
+        while (fgets(line3 , sizeof(line3) , tempForFindAllFilesInLastCommit) != NULL)
+        {
+            line3[strcspn(line3, "\n")] = 0;
+            if (!strcmp(line + strlen(rootAd) + 1 , line3 + strlen(theLatestCommitAddress) + 1))
+            {
+                //check if it is modified or not
+                isFileInLastCommit = 1;
+                break;
+            }
+        }
+        if (!isFileInLastCommit)
+        {
+            printf("%s" , "A");
+        }
+        else
+        {
+            char commandForCompare[1000] = "cmp -s \"";
+            strcat(commandForCompare , line);
+            strcat(commandForCompare , "\" \"");
+            strcat(commandForCompare , line3);
+            strcat(commandForCompare , "\"");
+            if (system(commandForCompare) == 0)
+            {
+                printf("%s" , "U");
+            }
+            else
+            {
+                printf("%s" , "M");
+            }
+        }
+
+        //print the file name
+        printf(" File Name = %s\n" , line + strlen(rootAd) + 1);
+
+        allFilesInRootCount++;
+    }
+    pclose(tempForFindAllFilesInRoot);
+
+    // check if it is deleted or not
+    char theLatestCommitAddress[1000] = "";
+    FILE *fp = fopen(theLatestCommit , "r");
+    fgets(theLatestCommitAddress , sizeof(theLatestCommitAddress) , fp);
+    char commandForFindAllFilesInLastCommit[1000] = "find \"";
+    strcat(commandForFindAllFilesInLastCommit , theLatestCommitAddress);
+    strcat(commandForFindAllFilesInLastCommit , "\" -type f 2> .niggit/error.log");
+
+    FILE* tempForFindAllFilesInLastCommit = popen(commandForFindAllFilesInLastCommit , "r");
+    char line3[1000];
+    int isFileInLastCommit = 0;
+    while (fgets(line3 , sizeof(line3) , tempForFindAllFilesInLastCommit) != NULL)
+    {
+        line3[strcspn(line3, "\n")] = 0;
+        int isFileInRoot = 0;
+        FILE* tempForFindAllFilesInRoot = popen(commandForFindAllFilesInRoot , "r");
+        char line4[1000];
+        while (fgets(line4 , sizeof(line4) , tempForFindAllFilesInRoot) != NULL)
+        {
+            line4[strcspn(line4, "\n")] = 0;
+            if (!strcmp(line3 + strlen(theLatestCommitAddress) + 1 , line4 + strlen(rootAd) + 1))
+            {
+                isFileInRoot = 1;
+                break;
+            }
+        }
+        if (!isFileInRoot)
+        {
+            printf("-%s" , "D");
+            printf(" File Name = %s\n" , line3 + strlen(theLatestCommitAddress) + 1);
+        }
+    }
 }
 void SetCommitShortCut(char **argv)
 {
@@ -1647,6 +1770,13 @@ void Commit(char **argv)
     fprintf(latestCommitTxtFile , "%s" , newName);
     fclose(latestCommitTxtFile);
 
+    // store the last commit in global lates-commit.txt
+    char latestCommitTextFileAddress2[1000] = "";
+    strcat(latestCommitTextFileAddress2 , theLatestCommit);
+
+    FILE* latestCommitTxtFile2 = fopen(latestCommitTextFileAddress2 , "w");
+    fprintf(latestCommitTxtFile2 , "%s" , newName);
+    fclose(latestCommitTxtFile2);
 }
 void Log(char **argv)
 {
@@ -2580,33 +2710,7 @@ void CheckOut(char **argv)
 }
 void Debug(char **argv)
 {
-    char rootAddress[1000] = "";
-    FILE* temp1 = popen("pwd" , "r");
-    fgets(rootAddress , sizeof(rootAddress) , temp1);
-    char commandForCpy[1000] = "find \"";
-    strcat(commandForCpy , rootAddress);
-    strcat(commandForCpy , "\" 2> .niggit/error.log");
-    FILE* tempForCpy = popen(commandForCpy , "r");
-    char line[1000];
-    while (fgets(line , sizeof(line) , tempForCpy) != NULL)
-    {
-            line[strlen(line) - 2] = '\0';
-            printf("%s\n" , line);
-        if (!strcmp(line , rootAddress))
-        {
-            continue;
-        }
-        if (strstr(line , ".niggit") == NULL)
-        {
-            char commandForCpy2[1000] = "cp -r \"";
-            strcat(commandForCpy2 , line);
-            strcat(commandForCpy2 , "\"");
-            strcat(commandForCpy2 , " \"");
-            strcat(commandForCpy2 , stageForCommit);
-            strcat(commandForCpy2 , "\"");
-            system(commandForCpy2);
-        }
-    }
+    
 }
 void CommandFinder(char **argv)
 {
