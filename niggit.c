@@ -1681,6 +1681,43 @@ void Commit(char **argv)
         }  
     }
 
+    //if file is deleted in working tree but availble in current stage add it to stage for commit
+    char commandToFindAllInStageCurrent1[1000] = "find ";
+    strcat(commandToFindAllInStageCurrent1 , stagesCurrentAddress);
+    FILE* tempForFindAllInStageCurrent = popen(commandToFindAllInStageCurrent1 , "r");
+    char line3[1000];
+    while (fgets(line3 , sizeof(line3) , tempForFindAllInStageCurrent) != NULL)
+    {
+        line3[strlen(line3) - 1] = '\0';
+        // printf("%s\n" , line3);
+        // printf("%s\n" , line2);
+        // printf("----------\n");
+        char commandToFindAllInRoot[1000] = "find ";
+        strcat(commandToFindAllInRoot , rootAddress);
+        FILE* tempForFindAllInRoot = popen(commandToFindAllInRoot , "r");
+        char line4[1000];
+        int isFileInRoot = 0;
+        while (fgets(line4 , sizeof(line4) , tempForFindAllInRoot) != NULL)
+        {
+            line4[strlen(line4) - 1] = '\0';
+            if (!strcmp(line3 + strlen(stagesCurrentAddress) + 1 , line4 + strlen(rootAddress) + 1))
+            {
+                isFileInRoot = 1;
+                break;
+            }
+        }
+        if (!isFileInRoot)
+        {
+            char commandToReplace2[1000] = "cp -r \"";
+            strcat(commandToReplace2 , line3);
+            strcat(commandToReplace2 , "\"");
+            strcat(commandToReplace2 , " \"");
+            strcat(commandToReplace2 , stageForCommit);
+            strcat(commandToReplace2 , "\"");
+            system(commandToReplace2);
+        }
+    }
+
     //finds how many files are there in stage-current
     int fileCount = 0;
     count_files(stageForCommit, &fileCount);
