@@ -2251,6 +2251,8 @@ void Log(char **argv)
             return;
         }
         
+        //search with and without wildcard
+        
         FILE *fp = fopen(globalCommitList , "r");
         char lines[1000][1000];
         int count = 0;
@@ -2260,16 +2262,44 @@ void Log(char **argv)
             count++;
         }
         fclose(fp);
-
         for (int i = count - 1; i >= 0; i--)
         {
             char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
             sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
-            
             int indForArgv = 3;
             while (argv[indForArgv] != NULL)
             {
-                if (strstr(commitMessage , argv[indForArgv]) != NULL)
+                if (strstr(argv[indForArgv] , "*"))
+                {
+                    char tmpArgv[1000] = "";
+                    strcat(tmpArgv , argv[indForArgv]);
+                    const char s[2] = "*";
+                    char *token;
+                    token = strtok(tmpArgv, s);
+                    int hasAllTheTokens = 1;
+                    while(token != NULL) 
+                    {
+                        if (!strstr(commitMessage , token))
+                        {
+                            hasAllTheTokens = 0;
+                            break;
+                        }       
+                        token = strtok(NULL, s);
+                    }
+                    if (hasAllTheTokens)
+                    {
+                        isWordFound = 1;
+                        printf(GREEN"commit id : %s\n"RESET , commitId);
+                        printf("commit message : %s\n" , commitMessage);
+                        printf("commit time : %s\n" , commitTime);
+                        printf("commit branch : %s\n" , commitBranch);
+                        printf("commit username : %s\n" , commitUsername);
+                        printf("commit file count : %s\n" , commitFileCount);
+                        printf("\n");
+                        break;
+                    }
+                } 
+                else if (strstr(commitMessage , argv[indForArgv]) != NULL)
                 {
                     isWordFound = 1;
                     printf(GREEN"commit id : %s\n"RESET , commitId);
@@ -2284,12 +2314,10 @@ void Log(char **argv)
                 indForArgv++;
             }
         }
-        
         if (!isWordFound)
         {
             printf("we didn't find any commit with this(these) word(s) :/\n");
-        }
-        
+        }         
     }
     else
     {
@@ -2762,7 +2790,12 @@ void Debug(char **argv)
 }
 void CommandFinder(char **argv)
 {
-    if (!strcmp(argv[1] , "help"))
+    if (argv[1] == NULL)
+    {
+        printf("you didn't enter a command :/\n");
+        return;
+    }
+    else if (!strcmp(argv[1] , "help"))
     {
         printf("niggit init\n");
         printf("niggit add <file>\n");
