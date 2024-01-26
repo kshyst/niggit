@@ -11,6 +11,7 @@
 #define latestStageTextFile ".niggit/.stages/stages-latest.txt"
 #define stageCount ".niggit/.stages/stages-count.txt"
 #define stageForCommit ".niggit/.stages/stages-for-commit"
+#define unstageCommands ".niggit/.stages/unstage-commands.txt"
 //branch
 #define branchesAddress ".niggit/branches"
 #define masterAddress ".niggit/branches/master"
@@ -424,9 +425,25 @@ void Add(char **argv , int isUndo)
 
     char currentStageRepo[1000] = "";
     strcat(currentStageRepo , stagesCurrentAddress);
-    
+    // redo
+    if (!strcmp(argv[2] , "-redo"))
+    {
+        FILE *fp = fopen(unstageCommands , "r");
+        char line[1000];
+        while (fgets(line, sizeof(line), fp)) 
+        {
+            line[strcspn(line, "\n")] = 0;
+            char command[1000] = "niggit add \"";
+            strcat(command , line);
+            strcat(command , "\"");
+            system(command);
+        }
+        FILE *fp2 = fopen(unstageCommands , "w");
+        //print
+        printf("Redo Done :))\n");
+    }
     //multiple file add -f
-    if(!strcmp(argv[2] , "-f"))
+    else if(!strcmp(argv[2] , "-f"))
     {
         int ind = 3;
         while (argv[ind] != NULL)
@@ -528,7 +545,7 @@ void Add(char **argv , int isUndo)
         
     }
     //depth
-    if (!strcmp(argv[2], "-n")) 
+    else if (!strcmp(argv[2], "-n")) 
     {
         FILE *fp, *fpStage;
         char path[10000], pathStage[10000];
@@ -712,7 +729,7 @@ void Add(char **argv , int isUndo)
         }
     }
     //wildcard add
-    if ((argv[3] == NULL) && doesHaveStar) 
+    else if ((argv[3] == NULL) && doesHaveStar) 
     {
         char argvConverted[1000] = "";
         strcat(argvConverted, argv[2]);
@@ -848,6 +865,10 @@ void Add(char **argv , int isUndo)
         fprintf(latestStages , "%s\n" , "-");
         fclose(latestStages);
     }
+    // else
+    // {
+    //     printf("staging failed :/\n");
+    // }
 }
 void Reset(char **argv)
 {
@@ -950,6 +971,11 @@ void Reset(char **argv)
         int i = 0;
         while (argv[3+i] != NULL)
         {
+            //add the command to unstage commands file
+            FILE* unstageCommandsFile = fopen(unstageCommands , "a");
+            fprintf(unstageCommandsFile , "%s\n" , argv[3+i]);
+            fclose(unstageCommandsFile);
+            //unstaging
             int dotCount = 0;
             for (size_t j = 0; j < strlen(argv[3+i]); j++)
             {
@@ -992,6 +1018,12 @@ void Reset(char **argv)
     // reset wild card
     else if ((argv[2] != NULL) && (doesHaveStar == 1))
     {
+        //add the command to unstage commands file
+        FILE* unstageCommandsFile = fopen(unstageCommands , "a");
+        fprintf(unstageCommandsFile , "%s\n" , argv[2]);
+        fclose(unstageCommandsFile);
+
+        //unstaging
         char argvConverted[1000] = "";
         strcat(argvConverted, argv[2]);
 
@@ -1068,6 +1100,13 @@ void Reset(char **argv)
     //normal reset
     else
     {
+        //add the command to unstage commands file
+        FILE* unstageCommandsFile = fopen(unstageCommands , "a");
+        fprintf(unstageCommandsFile , "%s\n" , argv[2]);
+        fclose(unstageCommandsFile);
+
+        //unstaging
+
         int doesHaveDot = 0;
         for (size_t i = 0; i < strlen(argv[2]); i++)
         {
@@ -2582,11 +2621,145 @@ void CheckOut(char **argv)
     //checkout HEAD-n n commits before head UNDONE
     else if (strstr(argv[2] , "HEAD-"))
     {
+        // finding how many commits should we go back from the head
+        int n = atoi(argv[2] + 5);
+
+        // finding the address of the head
+        char addressOfTheHead[1000] = "";
+        FILE* head = fopen(headAddress , "r");
+        fgets(addressOfTheHead , sizeof(addressOfTheHead) , head);
+        fclose(head);
+        if (addressOfTheHead == NULL)
+        {
+            printf("You don't have head:/\n");
+            return;
+        }   
+        if (addressOfTheHead[strlen(addressOfTheHead) - 1] == '\n')
+        {
+            addressOfTheHead[strlen(addressOfTheHead) - 1] = '\0';
+        }
+
+        // finding the commit list of the branch of the head
+        char addressOfCommitList[1000] = "";
+        char addressOfRootOfTheBranch[1000] = "";
+        int slashCount = 0;
+        for (size_t i = strlen(addressOfTheHead) - 1; i >= 0 ; i--)
+        {
+            if (addressOfTheHead[i] == '/')
+            {
+                slashCount++;
+            }
+            if (slashCount == 2)
+            {
+                addressOfTheHead[i] = '\0';
+                break;
+            }      
+        }
         
-    }
-    else if (strstr(argv[2] , "HEAD-"))
-    {
-        
+        strcat(addressOfCommitList , addressOfTheHead);
+        strcat(addressOfCommitList , "/commit-list.txt");
+
+        // finding the address of the commit
+
+        FILE* commitList = fopen(addressOfCommitList , "r");
+        char line[1000];
+        int count = 0;
+        while (fgets(line , sizeof(line) , commitList) != NULL)
+        {
+            count++;
+        }
+        fclose(commitList);
+
+        if (n > count)
+        {
+            printf("you don't have that many commits :/\n");
+            return;
+        }
+
+        char commitId[1000];
+        commitList = fopen(addressOfCommitList , "r");
+        for (size_t i = 0; i < n; i++)
+        {
+            char commitId1[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
+            fscanf(commitList , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId1 , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            strcpy(commitId , commitId1);
+        }
+        fclose(commitList);
+
+        if (commitId[strlen(commitId) - 1] == '\n')
+        {
+            commitId[strlen(commitId) - 1] = '\0';
+        }
+
+        char commitAddress[1000] = "";
+        strcat(commitAddress , addressOfTheHead);
+        strcat(commitAddress , "/.commits/");
+        strcat(commitAddress , commitId);
+
+        // delete every thing from root execpt .niggit and .niggit-settings
+        char rootAddress[1000] = "";
+        FILE* temp = popen("pwd" , "r");
+        fgets(rootAddress , sizeof(rootAddress) , temp);
+
+        char commandForDelete[1000] = "find ";
+        strcat(commandForDelete , rootAddress);
+        strcat(commandForDelete , " 2> .niggit/error.log");
+
+        FILE* tempForDelete = popen(commandForDelete , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , tempForDelete) != NULL)
+        {
+            if (!strcmp(line2 , rootAddress))
+            {
+                continue;
+            }
+            if (strstr(line2 , ".niggit") == NULL)
+            {
+                line2[strlen(line2) - 1] = '\0';
+                char commandForDelete2[1000] = "rm -r \"";
+                strcat(commandForDelete2 , line2);
+                strcat(commandForDelete2 , "\"");
+                system(commandForDelete2);
+            }
+        }
+
+        // copy every file exept the branch folder into the root next to niggit folder
+
+        char commandForFind[1000] = "find \"";
+        strcat(commandForFind, commitAddress);
+        strcat(commandForFind , "\"");
+        strcat(commandForFind , " -maxdepth 1 2> .niggit/error.log");
+
+        rootAddress[strlen(rootAddress) - 1] = '\0';
+        FILE* tempForFind = popen(commandForFind , "r");
+        char line3[1000];
+        while (fgets(line3 , sizeof(line3) , tempForFind) != NULL)
+        {
+            line3[strlen(line3) - 1] = '\0';
+            if (!strcmp(line3 , commitAddress))
+            {
+                continue;
+            }
+            
+            if (strstr(line3 + strlen(commitAddress) - 1 , "branch-") == NULL)
+            {
+                char commandForCopy[1000] = "cp -r \"";
+                strcat(commandForCopy , line3);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , rootAddress);
+                strcat(commandForCopy , "/\"");
+                strcat(commandForCopy , " 2> .niggit/error.log");
+                system(commandForCopy);
+            }
+        }        
+
+        //disable commiting
+        FILE *fp10 = fopen(canCommit , "w");
+        fprintf(fp10 , "%d" , 0);
+        fclose(fp10);
+
+        //print success
+        printf("you just checked out to %d commits before HEAD (commiting is disabled) !\n" , n);
     }
     //checkout branch
     else
