@@ -1281,8 +1281,23 @@ void Status(char **argv)
             line3[strcspn(line3, "\n")] = 0;
             if (!strcmp(line + strlen(rootAd) + 1 , line3 + strlen(theLatestCommitAddress) + 1))
             {
-                //check if it is modified or not
                 isFileInLastCommit = 1;
+                // check if the permissions changed
+                char comPer1[1000] = "ls -l \"" , comPer2[1000] = "ls -l \"";
+                strcat(comPer1 , line);
+                strcat(comPer1 , "\"");
+                strcat(comPer2 , line3);
+                strcat(comPer2 , "\"");
+                FILE* per1f = popen(comPer1 , "r");
+                FILE* per2f = popen(comPer2 , "r");
+                char per1[1000] , per2[1000];
+                fgets(per1 , 11 , per1f);
+                fgets(per2 , 11 , per2f);
+                if (strcmp(per1 , per2))
+                {
+                    printf("T");
+                }
+                
                 break;
             }
         }
@@ -2739,7 +2754,11 @@ void CheckOut(char **argv)
 }
 void Debug(char **argv)
 {
-    
+    char command[1000] = "ls -l 2.txt";
+    FILE* tmp = popen(command , "r");
+    char permission[1000];
+    fgets(permission , 11 , tmp);
+    printf("%s" , permission);
 }
 void CommandFinder(char **argv)
 {
