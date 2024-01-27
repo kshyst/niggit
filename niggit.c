@@ -3487,10 +3487,7 @@ void Grep(char **argv)
 
                     if (isWordFoundInThisLine)
                     {
-                        if (doesHavelineNumber != -1)
-                        {
-                            printf("%d:" , lineNumber);
-                        }
+                        
                         int shouldPrint = 1;
                         char tempLine[1000] = "";
                         char theFuckingWord[1000] = "";
@@ -3553,6 +3550,10 @@ void Grep(char **argv)
                         
                         if (!shouldPrint)
                         {
+                            if (doesHavelineNumber != -1)
+                            {
+                                printf("%d:" , lineNumber);
+                            }
                             printf("%s\n" , tempLine);
                         }
                     }
