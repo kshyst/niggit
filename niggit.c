@@ -40,6 +40,8 @@
 //colors
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
+#define BLUE "\033[0;34m"
+#define CYAN "\033[0;36m"
 #define RESET "\033[0m"
 
 //Function Prototypes
@@ -3325,6 +3327,282 @@ void Tag(char **argv)
 }
 void Grep(char **argv)
 {
+    if (!IsNiggitInitialized())
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    //check for options
+    int doesHavelineNumber = -1 , doesHaveCommitId = -1;
+    int indForArgv = 2;
+    while (argv[indForArgv] != NULL)
+    {
+        if (!strcmp(argv[indForArgv] , "-n"))
+        {
+            doesHavelineNumber = indForArgv;
+        }
+        else if (!strcmp(argv[indForArgv] , "-c"))
+        {
+            doesHaveCommitId = indForArgv;
+        }
+        indForArgv++;
+    }
+
+    //get the commit ID
+    char commitId[1000] = "";
+    if (doesHaveCommitId != -1)
+    {
+        strcat(commitId , argv[doesHaveCommitId + 1]);
+    }
+
+    // get the address of search
+    char searchAddress[1000] = "";
+    
+    if (doesHaveCommitId != -1)
+    {
+        char branchOfCommit[1000] = "";
+        char branchOfCommitAddress[1000] = "";
+        FILE* globalCommitListTxtFile = fopen(globalCommitList , "r");
+        char gNames[1000];
+        int isCommitFound = 0;
+        while (fgets(gNames , sizeof(gNames) , globalCommitListTxtFile))
+        {
+            char id[1000] , message[1000] , time[1000] , branch[1000] , username[1000] , fileCount[1000] , email[1000];
+            sscanf(gNames , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , id , message , time , branch , username , email , fileCount  );
+            if (!strcmp(commitId , id))
+            {
+                strcat(branchOfCommit , branch);
+                isCommitFound = 1;
+                break;
+            }
+        }
+
+        if (!isCommitFound)
+        {
+            printf("BRUH this commit doesn't exists :/\n");
+            return;
+        }
+
+        // finding the address of the root of the branch
+        FILE* branchesTxtFile = fopen(branchesTextFile , "r");
+        char bNames[1000];
+        int isBranchFound = 0;
+        while (fgets(bNames , sizeof(bNames) , branchesTxtFile))
+        {
+            char name[1000] , address[1000];
+            sscanf(bNames , "%[^-]%*c%[^\n]%*c" , name , address );
+            if (!strcmp(branchOfCommit , name))
+            {
+                strcat(branchOfCommitAddress , address);
+                isBranchFound = 1;
+                break;
+            }
+        }
+
+        if (!isBranchFound)
+        {
+            printf("BRUH this branch doesn't exists :/\n");
+            return;
+        }
+
+        // finding the address of the commit
+        char commitAddress[1000] = "";
+        strcat(commitAddress , branchOfCommitAddress);
+        strcat(commitAddress , "/.commits/");
+        strcat(commitAddress , commitId);
+
+        // finding the address of the search
+        strcat(searchAddress , commitAddress);
+    }
+    else
+    {
+        FILE* currentDir = popen("pwd" , "r");
+        fgets(searchAddress , sizeof(searchAddress) , currentDir);
+        searchAddress[strcspn(searchAddress , "\n")] = '\0';
+        fclose(currentDir);
+    }
+
+    //get the search word
+    char searchWord[1000] = "";
+    strcat(searchWord , argv[5]);
+ 
+    //tokenize the search word
+    char tmpSearchWord[1000] = "";
+    strcat(tmpSearchWord , argv[5]);
+    char searchWordTokenized[100][1000] ;
+    int count = 0;
+    if (strstr(searchWord , "*") != NULL)
+    {
+        char* token = strtok(tmpSearchWord , "*");
+        while (token != NULL)
+        {
+            token[strcspn(token , "\n")] = '\0';
+            strcpy(searchWordTokenized[count] , token);
+            count++;
+            token = strtok(NULL , "*");
+        }
+    }
+
+    //get the search file
+    char searchFile[1000] = "";
+    strcat(searchFile , argv[3]);
+
+    //check if the file exists
+    char commandForFind[1000] = "find \"";
+    strcat(commandForFind , searchAddress);
+    strcat(commandForFind , "\" -name \"");
+    strcat(commandForFind , searchFile);
+    strcat(commandForFind , "\" -type f 2> .niggit/error.log");
+
+    FILE* tempForFind = popen(commandForFind , "r");
+    char line[1000];
+    int isWordFound = 0;
+    while (fgets(line , sizeof(line) , tempForFind) != NULL)
+    {
+        line[strcspn(line , "\n")] = '\0';
+        if ((doesHaveCommitId == -1) && (strstr(line , ".niggit") != NULL))
+        {
+            continue;
+        }
+        
+        else if (strstr(line , searchAddress) != NULL)
+        {
+            //search in the file but the searchWord is wildcard
+            if (strstr(searchWord , "*") != NULL)
+            {
+                FILE* file = fopen(line , "r");
+                char line2[1000];
+                int lineNumber = 1;
+                while (fgets(line2 , sizeof(line2) , file) != NULL)
+                {
+                    int isWordFoundInThisLine = 1;
+                    for (size_t i = 0; i < count; i++)
+                    {
+                        if (strstr(line2 , searchWordTokenized[i]) == NULL)
+                        {
+                            isWordFoundInThisLine = 0;
+                            break;
+                        }
+                    }
+
+                    if (isWordFoundInThisLine)
+                    {
+                        if (doesHavelineNumber != -1)
+                        {
+                            printf("%d:" , lineNumber);
+                        }
+                        int shouldPrint = 1;
+                        char tempLine[1000] = "";
+                        char theFuckingWord[1000] = "";
+                        char tempLine2[1000] = "";
+                        
+                        const char s[2] = " ";
+                        char *token;
+
+                        token = strtok(line2, s);
+
+                        while( token != NULL ) 
+                        {
+                            token[strcspn(token , "\n")] = '\0';
+                            int isTokenSpecialWord = 1;
+                            int indexToSearchAfter = 0;
+                            if (searchWord[0] != '*')
+                            {
+                                if (searchWord[0] != token[0])
+                                {
+                                    isTokenSpecialWord = 0;
+                                }
+                            }
+                            if (searchWord[strlen(searchWord) - 1] != '*')
+                            {
+                                if (searchWord[strlen(searchWord) - 1] != token[strlen(token) - 1])
+                                {
+                                    isTokenSpecialWord = 0;
+                                }
+                            }
+                            
+                            for (int i = 0; i < count; i++)
+                            {
+                                if (strstr(token + indexToSearchAfter , searchWordTokenized[i]) == NULL)
+                                {
+                                    isTokenSpecialWord = 0;
+                                    break;
+                                }
+                                else
+                                {
+                                    indexToSearchAfter = strstr(token , searchWordTokenized[i]) - token + strlen(searchWordTokenized[i]);
+                                }
+                            }
+                            
+                            if (!isTokenSpecialWord)
+                            {
+                                strcat(tempLine , token);
+                            }
+                            else
+                            {
+                                strcat(tempLine , CYAN);
+                                strcat(tempLine , token);
+                                strcat(tempLine , RESET);
+                                isWordFound = 1;
+                                shouldPrint = 0;
+                            }
+                            strcat(tempLine , " ");
+
+                            token = strtok(NULL, s);
+                        }
+                        
+                        if (!shouldPrint)
+                        {
+                            printf("%s\n" , tempLine);
+                        }
+                    }
+
+                    lineNumber++;
+                }
+            }
+            //search in the file
+            else
+            {
+                FILE* file = fopen(line , "r");
+                char line2[1000];
+                int lineNumber = 1;
+                while (fgets(line2 , sizeof(line2) , file) != NULL)
+                {
+                    if (strstr(line2 , searchWord) != NULL)
+                    {
+                        isWordFound = 1;
+                        if (doesHavelineNumber != -1)
+                        {
+                            printf("%d:" , lineNumber);
+                        }
+                        char tmp[1000] = "";
+                        int index = strstr(line2 , searchWord) - line2;
+                        for (size_t i = 0; i < index; i++)
+                        {
+                            char tmp2[2] = "";
+                            tmp2[0] = line2[i];
+                            strcat(tmp , tmp2);
+                        }
+                        printf("%s" , tmp);
+                        printf(CYAN"%s"RESET , searchWord);
+                        strcpy(tmp , "");
+                        for (size_t i = index + strlen(searchWord); i < strlen(line2); i++)
+                        {
+                            char tmp2[2] = "";
+                            tmp2[0] = line2[i];
+                            strcat(tmp , tmp2);
+                        }
+                        printf("%s" , tmp);
+                    }
+                    lineNumber++;
+                }
+            }
+        }
+    }
+    if (!isWordFound)
+    {
+        printf("the word you searched for doesn't exist in the file :/\n");
+    }
 
 }
 void Debug(char **argv)
@@ -3444,7 +3722,7 @@ void CommandFinder(char **argv)
     {
         Tag(argv);
     }
-    else if (!strcmp(argv[1] , "grap"))
+    else if (!strcmp(argv[1] , "grep"))
     {
         Grep(argv);
     }
