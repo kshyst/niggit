@@ -24,6 +24,7 @@
 #define canCommit ".niggit/branches/can-commit.txt"
 #define headAddress ".niggit/branches/head.txt"
 #define theLatestCommit ".niggit/branches/latest-commit.txt"
+#define currentCommit ".niggit/branches/current-commit.txt"
 //configs
 #define globalSettingAddress "/home/kshyst/.niggit-settings"
 #define localSettingAddress ".niggit/configs"
@@ -33,6 +34,9 @@
 #define globalUserEmail "/home/kshyst/.niggit-settings/global-userEmail.txt"
 #define localUserName ".niggit-settings/local-username.txt"
 #define localUserEmail ".niggit-settings/local-userEmail.txt"
+//phase2 bullshits
+#define tagsTextFile ".niggit/configs/tags.txt"
+#define tempTagsTextFile ".niggit/configs/temp-tags.txt"
 //colors
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
@@ -348,8 +352,6 @@ void Init()
         FILE *fp10 = fopen(canCommit , "w");
         fprintf(fp10 , "%d" , 1);
         fclose(fp10);
-
-
 
         printf("niggit reinitialized! :)\n");
     }
@@ -1908,6 +1910,11 @@ void Commit(char **argv)
     FILE* headTxt = fopen(headAddress , "w");
     fprintf(headTxt , "%s" , newName);
     fclose(headTxt);
+
+    // set the commit as current commit
+    FILE* currentCommitTxt = fopen(currentCommit , "w");
+    fprintf(currentCommitTxt , "%s" , newName);
+    fclose(currentCommitTxt);
 }
 void Log(char **argv)
 {
@@ -2607,6 +2614,11 @@ void CheckOut(char **argv)
         fprintf(fp10 , "%d" , 0);
         fclose(fp10);
 
+        // make the commit as current commit 
+        FILE* currentCommitTxt = fopen(currentCommit , "w");
+        fprintf(currentCommitTxt , "%s" , commitAddress);
+        fclose(currentCommitTxt);
+
         //print successful
         printf("you just checked out to a commit !\n");
     }
@@ -2692,6 +2704,11 @@ void CheckOut(char **argv)
         FILE *fp10 = fopen(canCommit , "w");
         fprintf(fp10 , "%d" , 1);
         fclose(fp10);
+
+        // put the head address as current commit
+        FILE* currentCommitTxt = fopen(currentCommit , "w");
+        fprintf(currentCommitTxt , "%s" , commitAddress);
+        fclose(currentCommitTxt);
 
         //print successful
         printf("you just checked out to HEAD !\n");
@@ -2835,6 +2852,11 @@ void CheckOut(char **argv)
         FILE *fp10 = fopen(canCommit , "w");
         fprintf(fp10 , "%d" , 0);
         fclose(fp10);
+
+        //put the address as current commit
+        FILE* currentCommitTxt = fopen(currentCommit , "w");
+        fprintf(currentCommitTxt , "%s" , commitAddress);
+        fclose(currentCommitTxt);
 
         //print success
         printf("you just checked out to %d commits before HEAD (commiting is disabled) !\n" , n);
@@ -3026,10 +3048,284 @@ void CheckOut(char **argv)
             fclose(headTxt);
         }
 
+        // put the last commit of the branch as current commit
+        FILE* currentCommitTxt = fopen(currentCommit , "w");
+        fprintf(currentCommitTxt , "%s" , newHeadAddress);
+        fclose(currentCommitTxt);
+
         //print successful
 
         printf("you just checked out to %s branch !!!!\n" , branchName);
     }
+}
+void Merge(char **argv)
+{
+
+}
+void Tag(char **argv)
+{
+    if (!IsNiggitInitialized())
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    // prints all tags with alphabetic order in their names
+    if (argv[2] == NULL)
+    {
+        FILE* tagsTxt = fopen(tagsTextFile , "r");
+        char lines[1000][1000];
+        int count = 0;
+        while (fgets(lines[count] , sizeof(lines[count]) , tagsTxt) != NULL)
+        {
+            count++;
+        }
+        fclose(tagsTxt);
+        for (int i = 0; i < count; i++)
+        {
+            for (int j = i + 1; j < count; j++)
+            {
+                char name1[1000] , name2[1000];
+                char  address1[1000] , commitId1[1000] , message1[1000] , username1[1000] , email1[1000]; 
+                char  address2[1000] , commitId2[1000] , message2[1000] , username2[1000] , email2[1000]; 
+                sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , name1 , address1 , commitId1 , message1 , username1 , email1 );
+                sscanf(lines[j] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , name2 , address2 , commitId2 , message2 , username2 , email2);
+                if (strcmp(name1 , name2) > 0)
+                {
+                    char tmp[1000] = "";
+                    strcpy(tmp , lines[i]);
+                    strcpy(lines[i] , lines[j]);
+                    strcpy(lines[j] , tmp);
+                }
+            }
+        }
+        for (int i = 0; i < count; i++)
+        {
+            char name[1000] , address[1000] , commitId[1000] , message[1000] , username[1000] , email[1000]; 
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , name , address , commitId , message , username , email );
+            printf(GREEN"tag name : %s\n"RESET , name);
+            printf("tag commit id : %s\n" , address);
+            printf("tag creation date : %s\n" , commitId);
+            printf("tag message : %s\n" , message);
+            printf("tager username : %s\n" , username);
+            printf("tager user email : %s\n" , email);
+            printf("\n");
+        }
+        return;
+    }
+    //show a tag with given tag name
+    if (!strcmp(argv[2] , "show"))
+    {
+        FILE* tagsTxt = fopen(tagsTextFile , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tagsTxt) != NULL)
+        {
+            char name[1000] , address[1000] , commitId[1000] , message[1000] , username[1000] , email[1000]; 
+            sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , name , address , commitId , message , username , email );
+            
+            if (!strcmp(name , argv[3]))
+            {
+                printf(GREEN"tag name : %s\n"RESET , name);
+                printf("tag commit id : %s\n" , address);
+                printf("tag creation date : %s\n" , commitId);
+                printf("tag message : %s\n" , message);
+                printf("tager username : %s\n" , username);
+                printf("tager user email : %s\n" , email);
+                printf("\n");
+                break;
+            }
+        }
+        fclose(tagsTxt);
+        return;
+    }
+     
+    // making a new temp tags list file
+    FILE* tempTagsTxt = fopen(tempTagsTextFile , "a");
+    
+    //check which options are there in tag and store the index of argv in them
+    int doesHaveMessage = -1 , doesHaveCommitId = -1 , doesHaveF = -1;
+    int indForArgv = 2;
+    while (argv[indForArgv] != NULL)
+    {
+        if (!strcmp(argv[indForArgv] , "-m"))
+        {
+            doesHaveMessage = indForArgv;
+        }
+        else if (!strcmp(argv[indForArgv] , "-c"))
+        {
+            doesHaveCommitId = indForArgv;
+        }
+        else if (!strcmp(argv[indForArgv] , "-f"))
+        {
+            doesHaveF = indForArgv;
+        }
+        indForArgv++;
+    }
+    
+    //get the commit ID
+    char commitId[1000] = "";
+    if (doesHaveCommitId != -1)
+    {
+        strcat(commitId , argv[doesHaveCommitId + 1]);
+    }
+    else
+    {
+        //get the current commit
+        char currentCommitAddress[1000] = "";
+        FILE* currentCommitTxt = fopen(currentCommit , "r");
+        fgets(currentCommitAddress , sizeof(currentCommitAddress) , currentCommitTxt);
+        fclose(currentCommitTxt);
+
+        if (currentCommitAddress[strlen(currentCommitAddress) - 1] == '\n')
+        {
+            currentCommitAddress[strlen(currentCommitAddress) - 1] = '\0';
+        }
+
+        if (!strcmp(currentCommitAddress , ""))
+        {
+            printf("you don't have any commit :/\n");
+            return;
+        }
+        
+        char commitId1[1000] = "";
+        for (size_t i = strlen(currentCommitAddress) - 1; i >= 0; i--)
+        {
+            if (currentCommitAddress[i] == '/')
+            {
+                break;
+            }
+            char tmp[2] = "";
+            tmp[0] = currentCommitAddress[i];
+            strcat(commitId1 , tmp);
+        }
+        
+        for (int i = strlen(commitId1) - 1; i >= 0; i--)
+        {
+            char tmp[2] = "";
+            tmp[0] = commitId1[i];
+            strcat(commitId , tmp);
+        }
+
+        if (commitId[strlen(commitId) - 1] == '\n')
+        {
+            commitId[strlen(commitId) - 1] = '\0';
+        }
+    }
+
+    //get the message
+    char message[1000] = "";
+    if (doesHaveMessage != -1)
+    {
+        strcat(message , argv[doesHaveMessage + 1]);
+    }
+    else
+    {
+        strcat(message , "no message");
+    }
+
+    //get the tag name
+    char tagName[1000] = "";
+    strcat(tagName , argv[3]);
+
+    //get local username and global username
+    char localUserNameString[1000] = "";
+    char globalUserNameString[1000] = "";
+    
+    FILE *fp3 = fopen(localUserName , "r");
+    if (fp3 == NULL)
+    {
+        FILE *fp4 = fopen(globalUserName , "r");
+        fgets(globalUserNameString , sizeof(globalUserNameString) , fp4);
+        fclose(fp4);
+    }
+    else
+    {
+        fgets(localUserNameString , sizeof(localUserNameString) , fp3);
+        fclose(fp3);
+    }
+
+    char commitUsername[1000] = "";
+    if (localUserNameString[0] != '\0')
+    {
+        strcat(commitUsername , localUserNameString);
+    }
+    else if (globalUserNameString[0] != '\0')
+    {
+        strcat(commitUsername , globalUserNameString);
+    }
+    else
+    {
+        printf("BRUH you didn't set your username :/\n");
+        return;
+    }
+
+    //get global and local user email
+    char localUserEmailString[1000] = "";
+    char globalUserEmailString[1000] = "";
+
+    FILE *fp4 = fopen(localUserEmail , "r");
+    if (fp4 == NULL)
+    {
+        FILE *fp5 = fopen(globalUserEmail , "r");
+        fgets(globalUserEmailString , sizeof(globalUserEmailString) , fp5);
+        fclose(fp5);
+    }
+    else
+    {
+        fgets(localUserEmailString , sizeof(localUserEmailString) , fp4);
+        fclose(fp4);
+    }
+
+    char commitEmail[1000] = "";
+    if (localUserEmailString[0] != '\0')
+    {
+        strcat(commitEmail , localUserEmailString);
+    }
+    else if (globalUserEmailString[0] != '\0')
+    {
+        strcat(commitEmail , globalUserEmailString);
+    }
+    else
+    {
+        printf("BRUH you didn't set your email :/\n");
+        return;
+    }
+
+    //check if the tag exists if has f then delete it if not then print error
+    FILE* tagsTxt = fopen(tagsTextFile , "a+");
+    char line[1000];
+    while (fgets(line , sizeof(line) , tagsTxt) != NULL)
+    {
+        char name[1000] , address[1000] , commitId1[1000] , message1[1000] , username[1000] , email[1000]; 
+        sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , name , address , commitId1 , message1 , username , email);
+        if (!strcmp(name , tagName))
+        {
+            if (doesHaveF == -1)
+            {
+                printf("a tag with this tag name already exists :/\n");
+                remove(tempTagsTextFile);
+                return;
+            }
+            continue;
+        }
+        fprintf(tempTagsTxt , "%s-%s-%s-%s-%s-%s" , name , address , commitId1 , message1 , username , email);
+    }
+    fclose(tagsTxt);
+    
+    //rename the temp tags list file to the tags list file
+    remove(tagsTextFile);
+    rename(tempTagsTextFile , tagsTextFile);
+    
+    //add the new tag to the temp tags list file
+    tagsTxt = fopen(tagsTextFile , "a");
+    fprintf(tagsTxt , "%s-%s-%s-%s-%s-%s\n" , tagName , commitId , GetTime() , message , commitUsername , commitEmail);
+    fclose(tagsTxt);
+
+    //print successful
+    printf("you just tagged the current commit !\n");
+}
+void Grep(char **argv)
+{
+
 }
 void Debug(char **argv)
 {
@@ -3139,6 +3435,18 @@ void CommandFinder(char **argv)
     else if (!strcmp(argv[1] , "checkout"))
     {
         CheckOut(argv);
+    }
+    else if (!strcmp(argv[1] , "merge"))
+    {
+        Merge(argv);
+    }
+    else if (!strcmp(argv[1] , "tag"))
+    {
+        Tag(argv);
+    }
+    else if (!strcmp(argv[1] , "grap"))
+    {
+        Grep(argv);
     }
     else if (!strcmp(argv[1] , "debug"))
     {
