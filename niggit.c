@@ -1805,6 +1805,38 @@ void Commit(char **argv)
         return;
     }
 
+    //get global and local user email
+    char localUserEmailString[1000] = "";
+    char globalUserEmailString[1000] = "";
+
+    FILE *fp4 = fopen(localUserEmail , "r");
+    if (fp4 == NULL)
+    {
+        FILE *fp5 = fopen(globalUserEmail , "r");
+        fgets(globalUserEmailString , sizeof(globalUserEmailString) , fp5);
+        fclose(fp5);
+    }
+    else
+    {
+        fgets(localUserEmailString , sizeof(localUserEmailString) , fp4);
+        fclose(fp4);
+    }
+
+    char commitEmail[1000] = "";
+    if (localUserEmailString[0] != '\0')
+    {
+        strcat(commitEmail , localUserEmailString);
+    }
+    else if (globalUserEmailString[0] != '\0')
+    {
+        strcat(commitEmail , globalUserEmailString);
+    }
+    else
+    {
+        printf("BRUH you didn't set your email :/\n");
+        return;
+    }
+
     // get current branch name
     char currentBranchNameString[1000] = "";
     FILE *fp5 = fopen(currentBranchName , "r");
@@ -1836,11 +1868,11 @@ void Commit(char **argv)
     strcat(commitList , currentBranch);
     strcat(commitList , "/commit-list.txt");
     FILE *commitListFp = fopen(commitList , "a");
-    fprintf(commitListFp , "%s-%s-%s-%s-%s-%d\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername , fileCount);
+    fprintf(commitListFp , "%s-%s-%s-%s-%s-%s-%d\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername , commitEmail , fileCount);
 
     //add commit to global commit list
     FILE *globalCommitListFp = fopen(globalCommitList , "a");
-    fprintf(globalCommitListFp , "%s-%s-%s-%s-%s-%d\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername , fileCount);
+    fprintf(globalCommitListFp , "%s-%s-%s-%s-%s-%s-%d\n" , commitIdString , commitMessage , GetTime() , currentBranchNameString , commitUsername , commitEmail,  fileCount );
     fclose(globalCommitListFp);
 
     //print every shit about commit
@@ -1851,6 +1883,7 @@ void Commit(char **argv)
     printf("commit time : %s\n" , GetTime());
     printf("commit branch : %s\n" , currentBranchNameString);
     printf("commit username : %s\n" , commitUsername);
+    printf("commit user email : %s\n" , commitEmail);
     printf("commit file count : %d\n" , fileCount);
 
     //store the last commit 
@@ -1902,13 +1935,14 @@ void Log(char **argv)
 
         for (int i = count - 1; i >= 0; i--)
         {
-            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
-            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000] , commitEmail[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitEmail , commitFileCount );
             printf(GREEN"commit id : %s\n"RESET , commitId);
             printf("commit message : %s\n" , commitMessage);
             printf("commit time : %s\n" , commitTime);
             printf("commit branch : %s\n" , commitBranch);
             printf("commit username : %s\n" , commitUsername);
+            printf("commit user email : %s\n" , commitEmail);
             printf("commit file count : %s\n" , commitFileCount);
             printf("\n");
         }
@@ -1934,13 +1968,14 @@ void Log(char **argv)
                 break;
             }
             
-            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
-            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000] , commitEmail[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitEmail , commitFileCount );
             printf(GREEN"commit id : %s\n"RESET , commitId);
             printf("commit message : %s\n" , commitMessage);
             printf("commit time : %s\n" , commitTime);
             printf("commit branch : %s\n" , commitBranch);
             printf("commit username : %s\n" , commitUsername);
+            printf("commit user email : %s\n" , commitEmail);
             printf("commit file count : %s\n" , commitFileCount);
             printf("\n");
         }
@@ -1965,8 +2000,8 @@ void Log(char **argv)
 
         for (int i = count - 1; i >= 0; i--)
         {
-            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
-            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000] , commitEmail[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitEmail , commitFileCount );
             if (!strcmp(commitUsername , argv[3]))
             {
                 isAuthorFound = 1;
@@ -1975,6 +2010,7 @@ void Log(char **argv)
                 printf("commit time : %s\n" , commitTime);
                 printf("commit branch : %s\n" , commitBranch);
                 printf("commit username : %s\n" , commitUsername);
+                printf("commit user email : %s\n" , commitEmail);
                 printf("commit file count : %s\n" , commitFileCount);
                 printf("\n");
             }
@@ -2008,8 +2044,8 @@ void Log(char **argv)
 
         for (int i = count - 1; i >= 0; i--)
         {
-            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
-            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000] , commitEmail[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitEmail , commitFileCount );
             if (!strcmp(commitBranch , argv[3]))
             {
                 isBranchFound = 1;
@@ -2018,6 +2054,7 @@ void Log(char **argv)
                 printf("commit time : %s\n" , commitTime);
                 printf("commit branch : %s\n" , commitBranch);
                 printf("commit username : %s\n" , commitUsername);
+                printf("commit user email : %s\n" , commitEmail);
                 printf("commit file count : %s\n" , commitFileCount);
                 printf("\n");
             }
@@ -2051,8 +2088,8 @@ void Log(char **argv)
 
         for (int i = count - 1; i >= 0; i--)
         {
-            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
-            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000] , commitEmail[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitEmail , commitFileCount );
             int commitYear , commitMonth , commitDay , commitHour , commitMinute , commitSecond;
             sscanf(commitTime , "%d/%d/%d %d:%d:%d" , &commitYear , &commitMonth , &commitDay , &commitHour , &commitMinute , &commitSecond);
 
@@ -2068,6 +2105,7 @@ void Log(char **argv)
                 printf("commit time : %s\n" , commitTime);
                 printf("commit branch : %s\n" , commitBranch);
                 printf("commit username : %s\n" , commitUsername);
+                printf("commit user email : %s\n" , commitEmail);
                 printf("commit file count : %s\n" , commitFileCount);
                 printf("\n");
                 continue;
@@ -2196,8 +2234,8 @@ void Log(char **argv)
 
         for (int i = count - 1; i >= 0; i--)
         {
-            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
-            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000] , commitEmail[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitEmail , commitFileCount );
             int commitYear , commitMonth , commitDay , commitHour , commitMinute , commitSecond;
             sscanf(commitTime , "%d/%d/%d %d:%d:%d" , &commitYear , &commitMonth , &commitDay , &commitHour , &commitMinute , &commitSecond);
 
@@ -2213,6 +2251,7 @@ void Log(char **argv)
                 printf("commit time : %s\n" , commitTime);
                 printf("commit branch : %s\n" , commitBranch);
                 printf("commit username : %s\n" , commitUsername);
+                printf("commit user email : %s\n" , commitEmail);
                 printf("commit file count : %s\n" , commitFileCount);
                 printf("\n");
                 continue;
@@ -2340,8 +2379,8 @@ void Log(char **argv)
         fclose(fp);
         for (int i = count - 1; i >= 0; i--)
         {
-            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
-            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            char commitId[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000] , commitEmail[1000];
+            sscanf(lines[i] , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , commitMessage , commitTime , commitBranch , commitUsername , commitEmail , commitFileCount );
             int indForArgv = 3;
             while (argv[indForArgv] != NULL)
             {
@@ -2370,6 +2409,7 @@ void Log(char **argv)
                         printf("commit time : %s\n" , commitTime);
                         printf("commit branch : %s\n" , commitBranch);
                         printf("commit username : %s\n" , commitUsername);
+                        printf("commit user email : %s\n" , commitEmail);
                         printf("commit file count : %s\n" , commitFileCount);
                         printf("\n");
                         break;
@@ -2383,6 +2423,7 @@ void Log(char **argv)
                     printf("commit time : %s\n" , commitTime);
                     printf("commit branch : %s\n" , commitBranch);
                     printf("commit username : %s\n" , commitUsername);
+                    printf("commit user email : %s\n" , commitEmail);
                     printf("commit file count : %s\n" , commitFileCount);
                     printf("\n");
                     break;
@@ -2460,8 +2501,8 @@ void CheckOut(char **argv)
         int isCommitFound = 0;
         while (fgets(gNames , sizeof(gNames) , globalCommitListTxtFile))
         {
-            char id[1000] , message[1000] , time[1000] , branch[1000] , username[1000] , fileCount[1000];
-            sscanf(gNames , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , id , message , time , branch , username , fileCount );
+            char id[1000] , message[1000] , time[1000] , branch[1000] , username[1000] , fileCount[1000] , email[1000];
+            sscanf(gNames , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , id , message , time , branch , username , email , fileCount  );
             if (!strcmp(commitId , id))
             {
                 strcat(branchOfCommit , branch);
@@ -2717,8 +2758,8 @@ void CheckOut(char **argv)
         commitList = fopen(addressOfCommitList , "r");
         for (size_t i = 0; i < n; i++)
         {
-            char commitId1[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000];
-            fscanf(commitList , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId1 , commitMessage , commitTime , commitBranch , commitUsername , commitFileCount);
+            char commitId1[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000] , commitEmail[1000];
+            fscanf(commitList , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId1 , commitMessage , commitTime , commitBranch , commitUsername , commitEmail , commitFileCount );
             strcpy(commitId , commitId1);
         }
         fclose(commitList);
