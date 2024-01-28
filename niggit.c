@@ -3945,7 +3945,128 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
             return;
         }
     }
-    //
+    //checks for compiler error in c and cpp files
+    else if (!strcmp(hookId , "static_error_check"))
+    {
+        //check if the file is empty
+        FILE* file = fopen(fileAddress , "r");
+        char line[1000];
+        int isFileEmpty = 1;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (strcmp(line , "\n"))
+            {
+                isFileEmpty = 0;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileEmpty)
+        {
+            printf(GREEN"PASSED : \n"RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+
+        //check if the file has compiler error
+        file = fopen(fileAddress , "r");
+        int isFileHasCompilerError = 0;
+        char commandForCompilerError[1000] = "";
+        if (strstr(fileAddress , ".c") != NULL)
+        {
+            strcat(commandForCompilerError , "gcc ");
+            strcat(commandForCompilerError , fileAddress);
+            strcat(commandForCompilerError , " 2> .niggit/configs/compiler_error.log");
+        }
+        else if (strstr(fileAddress , ".cpp") != NULL)
+        {
+            strcat(commandForCompilerError , "g++ ");
+            strcat(commandForCompilerError , fileAddress);
+            strcat(commandForCompilerError , " 2> .niggit/configs/compiler_error.log");
+        }
+        FILE* tempForCompilerError = popen(commandForCompilerError , "r");
+        char error[1000];
+        fgets(error , sizeof(error) , tempForCompilerError);
+        fclose(tempForCompilerError);
+        fclose(file);
+        FILE* fp = fopen(".niggit/configs/compiler_error.log" , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , fp) != NULL)
+        {
+            if (!strstr(line2 , "error") || !strstr(line2 , "terminated"))
+            {
+                isFileHasCompilerError = 1;
+                break;
+            }          
+        }
+        if (isFileHasCompilerError)
+        {
+            printf(RED"FAILED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+        else
+        {
+            printf(GREEN"PASSED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+    }
+    //checks if braces open and close counts are equal
+    else if (!strcmp(hookId , "balance_braces"))
+    {
+        //check if the file is empty
+        FILE* file = fopen(fileAddress , "r");
+        char line[1000];
+        int isFileEmpty = 1;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (strcmp(line , "\n"))
+            {
+                isFileEmpty = 0;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileEmpty)
+        {
+            printf(GREEN"PASSED : \n"RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+
+        //check if the file has equal open and close braces
+        file = fopen(fileAddress , "r");
+        int openBracesCount = 0;
+        int closeBracesCount = 0;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            for (size_t i = 0; i < strlen(line); i++)
+            {
+                if (line[i] == '{')
+                {
+                    openBracesCount++;
+                }
+                else if (line[i] == '}')
+                {
+                    closeBracesCount++;
+                }
+            }
+        }
+        fclose(file);
+        if (openBracesCount != closeBracesCount)
+        {
+            printf(RED"FAILED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+        else
+        {
+            printf(GREEN"PASSED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+    }
 }
 void PreCommit(char **argv)
 {
@@ -4018,7 +4139,52 @@ void PreCommit(char **argv)
             printf(BLUE"____________________________________________________\n"RESET);
             fclose(appliedHooksTxt);
         }
-
+    }
+    //do the pre commit on given files
+    if (!strcmp(argv[2] , "-f"))
+    {
+        //check if there is any applied hooks
+        FILE* appliedHooksTxt = fopen(appliedHooks , "r");
+        if (appliedHooksTxt == NULL)
+        {
+            printf("BRUH you don't have any applied hooks :/\n");
+            return;
+        }
+        fclose(appliedHooksTxt);
+        
+        //find all of the files in stage current folder
+        char commandForFind[1000] = "find ";
+        strcat(commandForFind , stagesCurrentAddress);
+        strcat(commandForFind , " -type f 2> .niggit/error.log");
+        FILE* tempForFind = popen(commandForFind , "r");
+        char line[1000];
+        //apply the hooks on all of the files that are entered
+        while (fgets(line , sizeof(line) , tempForFind) != NULL)
+        {
+            line[strcspn(line , "\n")] = '\0';
+            int indForArgv = 3;
+            int isFileFound = 0;
+            while (argv[indForArgv] != NULL)
+            {
+                if (strstr(line , argv[indForArgv]))
+                {
+                    isFileFound = 1;
+                    printf(CYAN"applying hook on :%s\n"RESET , line);
+                    FILE* appliedHooksTxt = fopen(appliedHooks , "r");
+                    char line2[1000];
+                    while (fgets(line2 , sizeof(line2) , appliedHooksTxt) != NULL)
+                    {
+                        char hookId[1000] , fileTypes[1000] , description[1000];
+                        sscanf(line2 , "%[^-]%*c%[^-]%*c%[^\n]%*c" , hookId , fileTypes , description);
+                        ApplyHookOnFile(line , hookId , fileTypes , description);
+                    }
+                    printf(BLUE"____________________________________________________\n"RESET);
+                    fclose(appliedHooksTxt);
+                    break;
+                }
+                indForArgv++;
+            }
+        }
     }
     //print hooks list
     else if (!strcmp(argv[2] , "hooks") && !strcmp(argv[3] , "list") && argv[4] == NULL)
