@@ -37,12 +37,25 @@
 //phase2 bullshits
 #define tagsTextFile ".niggit/configs/tags.txt"
 #define tempTagsTextFile ".niggit/configs/temp-tags.txt"
+#define appliedHooks ".niggit/configs/applied-hooks.txt"
+#define tempAppliedHooks ".niggit/configs/temp-applied-hooks.txt"
+#define hooksTextFile "/home/kshyst/.niggit-settings/hooks.txt"
 //colors
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
 #define BLUE "\033[0;34m"
 #define CYAN "\033[0;36m"
+#define YELLOW "\033[0;33m"
 #define RESET "\033[0m"
+//Structs
+typedef struct Hook
+{
+    char hookId[100];
+    char fileTypes[100];
+    char hookDescription[1000];
+    struct Hook* next;
+}Hook;
+Hook* head = NULL;
 
 //Function Prototypes
 void CommandFinder(char **argv);
@@ -355,6 +368,9 @@ void Init()
         fprintf(fp10 , "%d" , 1);
         fclose(fp10);
 
+        FILE *fp11 = fopen(appliedHooks , "w");
+        fclose(fp11);
+
         printf("niggit reinitialized! :)\n");
     }
     else
@@ -404,6 +420,9 @@ void Init()
         FILE *fp10 = fopen(canCommit , "w");
         fprintf(fp10 , "%d" , 1);
         fclose(fp10);
+
+        FILE *fp11 = fopen(appliedHooks , "w");
+        fclose(fp11);
 
         printf("niggit initialized! :)\n");
     }  
@@ -3606,6 +3625,551 @@ void Grep(char **argv)
     }
 
 }
+void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes[1000] , char hookDescription[1000])
+{
+    //check if the file type is correct , the format_check hook runs in this
+    if (1)
+    {
+        char fileType[1000] = "";
+        for (size_t i = strlen(fileAddress) - 1; i >= 0; i--)
+        {
+            if (fileAddress[i] == '.')
+            {
+                break;
+            }
+            char tmp[2] = "";
+            tmp[0] = fileAddress[i];
+            strcat(fileType , tmp);
+        }
+        char tmp[1000] = "";
+        for (int i = strlen(fileType) - 1; i >= 0; i--)
+        {
+            char tmp2[2] = "";
+            tmp2[0] = fileType[i];
+            strcat(tmp , tmp2);
+        }
+        strcpy(fileType , tmp);
+        int isFileTypeCorrect = 0;
+        char fileTypesTokenized[100][1000];
+        int count = 0;
+        char tmpFileTypes[1000] = "";
+        strcat(tmpFileTypes , fileTypes);
+        char* token = strtok(tmpFileTypes , " ");
+        while (token != NULL)
+        {
+            token[strcspn(token , "\n")] = '\0';
+            strcpy(fileTypesTokenized[count] , token);
+            count++;
+            token = strtok(NULL , " ");
+        }
+        char tmpFileType[1000] = ".";
+        strcat(tmpFileType , fileType);
+        for (size_t i = 0; i < count; i++)
+        {
+            if (!strcmp(tmpFileType , fileTypesTokenized[i]))
+            {
+                isFileTypeCorrect = 1;
+                break;
+            }
+        }
+        if(!strcmp(fileTypesTokenized[0] , "all"))
+        {
+            isFileTypeCorrect = 1;
+        }
+        if (!isFileTypeCorrect)
+        {
+            if (!strcmp(hookId , "format_check"))
+            {
+                printf(RED"FAILED : "RESET);
+                printf("%s\n" , hookId);
+                return;
+            }
+            else
+            {
+                printf(YELLOW"SKIPPED : "RESET);
+                printf("%s\n" , hookId);
+                return;
+            }
+        }
+        if (!strcmp(hookId , "format_check"))
+        {
+            printf(GREEN"PASSED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+    }
+    //character limit hook
+    if (!strcmp(hookId , "character_limit"))
+    {
+        //check if the file is empty
+        FILE* file = fopen(fileAddress , "r");
+        char line[1000];
+        int isFileEmpty = 1;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (strcmp(line , "\n"))
+            {
+                isFileEmpty = 0;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileEmpty)
+        {
+            printf(GREEN"PASSED : \n"RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+
+        //check if the file has more than 20000 characters
+        file = fopen(fileAddress , "r");
+        int isFileMoreThan20000Characters = 0;
+        int count = 0;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            count += strlen(line);
+            if (count > 20000)
+            {
+                isFileMoreThan20000Characters = 1;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileMoreThan20000Characters)
+        {
+            printf(RED"FAILED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+        else
+        {
+            printf(GREEN"PASSED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+    }
+    //file size check hook
+    else if (!strcmp(hookId , "file_size_check"))
+    {
+        //check if the file is empty
+        FILE* file = fopen(fileAddress , "r");
+        char line[1000];
+        int isFileEmpty = 1;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (strcmp(line , "\n"))
+            {
+                isFileEmpty = 0;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileEmpty)
+        {
+            printf(GREEN"PASSED : \n"RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+
+        //check if files size is less than 5MB
+        file = fopen(fileAddress , "r");
+        int isFileSizeLessThan5MB = 1;
+        int count = 0;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            count += strlen(line);
+            if (count > 5000000)
+            {
+                isFileSizeLessThan5MB = 0;
+                break;
+            }
+        }
+        fclose(file);
+        if (!isFileSizeLessThan5MB)
+        {
+            printf(RED"FAILED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+        else
+        {
+            printf(GREEN"PASSED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+    }
+    // check if there is "TODO" phrase in the file
+    else if (!strcmp(hookId , "todo_check"))
+    {
+        //check if the file is empty
+        FILE* file = fopen(fileAddress , "r");
+        char line[1000];
+        int isFileEmpty = 1;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (strcmp(line , "\n"))
+            {
+                isFileEmpty = 0;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileEmpty)
+        {
+            printf(GREEN"PASSED : \n"RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+
+        //check if the file has "TODO" phrase
+        file = fopen(fileAddress , "r");
+        int isFileHasTodoPhrase = 0;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (strstr(line , "TODO") != NULL)
+            {
+                isFileHasTodoPhrase = 1;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileHasTodoPhrase)
+        {
+            printf(RED"FAILED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+        else
+        {
+            printf(GREEN"PASSED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+    }
+    //for mp4 mp3 and wav checks that the duration wont be more than 10 minutes
+    else if (!strcmp(hookId , "time_limit"))
+    {
+        //check if the file is empty
+        FILE* file = fopen(fileAddress , "r");
+        char line[1000];
+        int isFileEmpty = 1;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (strcmp(line , "\n"))
+            {
+                isFileEmpty = 0;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileEmpty)
+        {
+            printf(GREEN"PASSED : \n"RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+
+        //check if the file has more than 10 minutes duration
+        file = fopen(fileAddress , "r");
+        int isFileMoreThan10Minutes = 0;
+        char commandForGettingSeconds[1000] = "ffprobe -i \"";
+        strcat(commandForGettingSeconds , fileAddress);
+        strcat(commandForGettingSeconds , "\" -show_entries format=duration -v quiet -of csv=\"p=0\" 2> .niggit/error.log");
+        FILE* tempForGettingSeconds = popen(commandForGettingSeconds , "r");
+        char seconds[1000];
+        fgets(seconds , sizeof(seconds) , tempForGettingSeconds);
+        fclose(tempForGettingSeconds);
+        if (atof(seconds) > 600)
+        {
+            isFileMoreThan10Minutes = 1;
+        }
+        fclose(file);
+        if (isFileMoreThan10Minutes)
+        {
+            printf(RED"FAILED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+        else
+        {
+            printf(GREEN"PASSED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+    }
+    //checks if there is whitespace at the end of the file
+    else if (!strcmp(hookId , "eof_blank_space"))
+    {
+        //check if the file is empty
+        FILE* file = fopen(fileAddress , "r");
+        char line[1000];
+        int isFileEmpty = 1;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (strcmp(line , "\n"))
+            {
+                isFileEmpty = 0;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileEmpty)
+        {
+            printf(GREEN"PASSED : \n"RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+
+        //check if the file has whitespace at the end
+        file = fopen(fileAddress , "r");
+        int isFileHasWhitespaceAtTheEnd = 0;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (line[strlen(line) - 2] == ' ')
+            {
+                isFileHasWhitespaceAtTheEnd = 1;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileHasWhitespaceAtTheEnd)
+        {
+            printf(RED"FAILED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+        else
+        {
+            printf(GREEN"PASSED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+    }
+    //
+}
+void PreCommit(char **argv)
+{
+    //check if niggit is initialized
+    if (!IsNiggitInitialized())
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    
+    // make the hooks linklist
+    struct Hook* head = NULL;
+    struct Hook* current = NULL;
+    FILE* hooksTxt = fopen(hooksTextFile , "r");
+    char line[1000];
+    while (fgets(line , sizeof(line) , hooksTxt) != NULL)
+    {
+        char hookId[1000] , fileTypes[1000] , description[1000];
+        sscanf(line , "%[^-]%*c%[^-]%*c%[^\n]%*c" , hookId , fileTypes , description);
+        struct Hook* temp = (struct Hook*)malloc(sizeof(struct Hook));
+        strcpy(temp->hookId , hookId);
+        strcpy(temp->fileTypes , fileTypes);
+        strcpy(temp->hookDescription , description);
+        temp->next = NULL;
+        if (head == NULL)
+        {
+            head = temp;
+            current = temp;
+        }
+        else
+        {
+            current->next = temp;
+            current = temp;
+        }
+    }
+    fclose(hooksTxt);
+
+    //do the pre commit on all of the files in stages-current folder
+    if (argv[2] == NULL)
+    {
+        //check if there is any applied hooks
+        FILE* appliedHooksTxt = fopen(appliedHooks , "r");
+        if (appliedHooksTxt == NULL)
+        {
+            printf("BRUH you don't have any applied hooks :/\n");
+            return;
+        }
+        fclose(appliedHooksTxt);
+        
+        //find all of the files in stage current folder
+        char commandForFind[1000] = "find ";
+        strcat(commandForFind , stagesCurrentAddress);
+        strcat(commandForFind , " -type f 2> .niggit/error.log");
+        FILE* tempForFind = popen(commandForFind , "r");
+        char line[1000];
+        
+        //apply the hooks on all of the files
+        while (fgets(line , sizeof(line) , tempForFind) != NULL)
+        {
+            line[strcspn(line , "\n")] = '\0';
+            printf(CYAN"applying hook on :%s\n"RESET , line);
+            FILE* appliedHooksTxt = fopen(appliedHooks , "r");
+            char line2[1000];
+            while (fgets(line2 , sizeof(line2) , appliedHooksTxt) != NULL)
+            {
+                char hookId[1000] , fileTypes[1000] , description[1000];
+                sscanf(line2 , "%[^-]%*c%[^-]%*c%[^\n]%*c" , hookId , fileTypes , description);
+                ApplyHookOnFile(line , hookId , fileTypes , description);
+            }
+            printf(BLUE"____________________________________________________\n"RESET);
+            fclose(appliedHooksTxt);
+        }
+
+    }
+    //print hooks list
+    else if (!strcmp(argv[2] , "hooks") && !strcmp(argv[3] , "list") && argv[4] == NULL)
+    {
+        struct Hook* temp = head;
+        while (temp != NULL)
+        {
+            printf(GREEN"hook id : %s\n"RESET , temp->hookId);
+            printf("file types : %s\n" , temp->fileTypes);
+            printf("hook description : %s\n" , temp->hookDescription);
+            printf(BLUE"____________________________________________________\n"RESET);
+            temp = temp->next;
+        }
+        return;
+    }
+    //add hooks to applied hooks by there id
+    else if (!strcmp(argv[2] , "add") && !strcmp(argv[3] , "hook"))
+    {
+        //check if the hook exists
+        int isHookFound = 0;
+        struct Hook* temp = head;
+        while (temp != NULL)
+        {
+            if (!strcmp(temp->hookId , argv[4]))
+            {
+                isHookFound = 1;
+                break;
+            }
+            temp = temp->next;
+        }
+        if (!isHookFound)
+        {
+            printf("BRUH this hook doesn't exists :/\n");
+            return;
+        }
+
+        //check if the hook is already applied
+        FILE* appliedHooksTxt = fopen(appliedHooks , "r");
+        if (appliedHooksTxt == NULL)
+        {
+            appliedHooksTxt = fopen(appliedHooks , "w");
+            fclose(appliedHooksTxt);
+            appliedHooksTxt = fopen(appliedHooks , "r");
+        }
+        char line[1000];
+        while (fgets(line , sizeof(line) , appliedHooksTxt) != NULL)
+        {
+            char hookId[1000];
+            sscanf(line , "%[^-]%*c" , hookId);
+            if (!strcmp(hookId , argv[4]))
+            {
+                printf("this hook is already applied :/\n");
+                return;
+            }
+        }
+        fclose(appliedHooksTxt);
+
+        //add the hook to applied hooks
+        appliedHooksTxt = fopen(appliedHooks , "a");
+        fprintf(appliedHooksTxt , "%s-%s-%s\n" , argv[4] , temp->fileTypes , temp->hookDescription);
+        fclose(appliedHooksTxt);
+
+        //print successful
+        printf("you just added the hook to applied hooks !\n");
+        return;
+    }
+    // remove hooks by hooks id
+    else if (!strcmp(argv[2] , "remove") && !strcmp(argv[3] , "hook"))
+    {
+        //check if the hook exists
+        int isHookFound = 0;
+        struct Hook* temp = head;
+        while (temp != NULL)
+        {
+            if (!strcmp(temp->hookId , argv[4]))
+            {
+                isHookFound = 1;
+                break;
+            }
+            temp = temp->next;
+        }
+        if (!isHookFound)
+        {
+            printf("BRUH this hook doesn't exists :/\n");
+            return;
+        }
+
+        //check if the hook is already applied
+        FILE* appliedHooksTxt = fopen(appliedHooks , "r");
+        if (appliedHooksTxt == NULL)
+        {
+            printf("BRUH you don't have any applied hooks :/\n");
+            return;
+        }
+        char line[1000];
+        while (fgets(line , sizeof(line) , appliedHooksTxt) != NULL)
+        {
+            char hookId[1000];
+            sscanf(line , "%[^-]%*c" , hookId);
+            if (!strcmp(hookId , argv[4]))
+            {
+                break;
+            }
+        }
+        if (feof(appliedHooksTxt))
+        {
+            printf("BRUH this hook is not applied :/\n");
+            return;
+        }
+        fclose(appliedHooksTxt);
+
+        //remove the hook from applied hooks
+        appliedHooksTxt = fopen(appliedHooks , "r");
+        FILE* tempAppliedHooksTxt = fopen(tempAppliedHooks , "w");
+        while (fgets(line , sizeof(line) , appliedHooksTxt) != NULL)
+        {
+            char hookId[1000];
+            sscanf(line , "%[^-]%*c" , hookId);
+            if (strcmp(hookId , argv[4]))
+            {
+                fprintf(tempAppliedHooksTxt , "%s" , line);
+            }
+        }
+        fclose(appliedHooksTxt);
+        fclose(tempAppliedHooksTxt);
+        remove(appliedHooks);
+        rename(tempAppliedHooks , appliedHooks);
+
+        //print successful
+        printf("you just removed the hook from applied hooks !\n");
+        return;
+    }
+    //show applied hooks
+    else if (!strcmp(argv[2] , "applied") && !strcmp(argv[3] , "hooks") && argv[4] == NULL)
+    {
+        FILE* appliedHooksTxt = fopen(appliedHooks , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , appliedHooksTxt) != NULL)
+        {
+            char hookId[1000] , fileTypes[1000] , description[1000];
+            sscanf(line , "%[^-]%*c%[^-]%*c%[^\n]%*c" , hookId , fileTypes , description);
+            printf(GREEN"hook id : %s\n"RESET , hookId);
+            printf("file types : %s\n" , fileTypes);
+            printf("hook description : %s\n" , description);
+            printf(BLUE"____________________________________________________\n"RESET);
+        }
+        fclose(appliedHooksTxt);
+        return;
+    }
+    
+}
 void Debug(char **argv)
 {
     char command[1000] = "ls -l 2.txt";
@@ -3726,6 +4290,10 @@ void CommandFinder(char **argv)
     else if (!strcmp(argv[1] , "grep"))
     {
         Grep(argv);
+    }
+    else if (!strcmp(argv[1] , "pre-commit"))
+    {
+        PreCommit(argv);
     }
     else if (!strcmp(argv[1] , "debug"))
     {
