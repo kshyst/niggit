@@ -749,7 +749,7 @@ void Add(char **argv , int isUndo)
 
         char commandWildcard2[1000] = "find . -name ";
         strcat(commandWildcard2, argvConverted);
-        strcat(commandWildcard2, "*.txt 2> .niggit/error.log");
+        strcat(commandWildcard2, "*.* 2> .niggit/error.log");
         fp2 = popen(commandWildcard2, "r");
 
         if ((fp1 == NULL) && (fp2 == NULL)) {
@@ -1045,7 +1045,7 @@ void Reset(char **argv)
         strcat(commandWildcard2, stagesCurrentAddress);
         strcat(commandWildcard2, " -name ");
         strcat(commandWildcard2, argvConverted);
-        strcat(commandWildcard2, "*.txt 2> .niggit/error.log");
+        strcat(commandWildcard2, "*.* 2> .niggit/error.log");
         fp2 = popen(commandWildcard2, "r");
 
         if ((fp1 == NULL) && (fp2 == NULL)) {
