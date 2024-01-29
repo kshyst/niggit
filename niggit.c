@@ -40,12 +40,29 @@
 #define appliedHooks ".niggit/configs/applied-hooks.txt"
 #define tempAppliedHooks ".niggit/configs/temp-applied-hooks.txt"
 #define hooksTextFile "/home/kshyst/.niggit-settings/hooks.txt"
+#define canCommitHookTxt ".niggit/configs/can-commit-hook.txt"
 //colors
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
 #define BLUE "\033[0;34m"
 #define CYAN "\033[0;36m"
 #define YELLOW "\033[0;33m"
+#define MAGENTA "\033[0;35m"
+#define WHITE "\033[0;37m"
+#define BLACK "\033[0;30m"
+#define BOLDRED "\033[1;31m"
+#define BOLDGREEN "\033[1;32m"
+#define BOLDBLUE "\033[1;34m"
+#define BOLDCYAN "\033[1;36m"
+#define BOLDYELLOW "\033[1;33m"
+#define BOLDMAGENTA "\033[1;35m"
+#define BOLDWHITE "\033[1;37m"
+#define BOLDBLACK "\033[1;30m"
+#define BOLD "\033[1m"
+#define UNDERLINE "\033[4m"
+#define BLINK "\033[5m"
+#define REVERSE "\033[7m"
+#define HIDDEN "\033[8m"
 #define RESET "\033[0m"
 //Structs
 typedef struct Hook
@@ -56,7 +73,8 @@ typedef struct Hook
     struct Hook* next;
 }Hook;
 Hook* head = NULL;
-
+//Globals 
+int canCommitHook = 1;
 //Function Prototypes
 void CommandFinder(char **argv);
 char* GetTime();
@@ -1549,6 +1567,27 @@ void Commit(char **argv)
         FILE *fp10 = fopen(canCommit , "r");
         fscanf(fp10 , "%d" , &canCommiting);
         fclose(fp10);
+
+        int canCommitionHook = 0;
+        FILE *fp11 = fopen(canCommitHookTxt , "r");
+        if (fp11 != NULL)
+        {
+            fscanf(fp11 , "%d" , &canCommitionHook);
+            fclose(fp11);
+        }
+        
+        if (!canCommitionHook)
+        {
+            printf("you have failed hooks , do you want to proceed with commiting? (y/n)\n");
+            char answer[1000] = "";
+            scanf("%s" , answer);
+            if (strcmp(answer , "y"))
+            {
+                printf("commiting canceled :/\n");
+                return;
+            }
+        }
+        
         
         if (canCommiting == 0)
         {
@@ -3682,6 +3721,7 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
             {
                 printf(RED"FAILED : "RESET);
                 printf("%s\n" , hookId);
+                canCommitHook = 0;
                 return;
             }
             else
@@ -3739,6 +3779,7 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
         {
             printf(RED"FAILED : "RESET);
             printf("%s\n" , hookId);
+            canCommitHook = 0;
             return;
         }
         else
@@ -3789,6 +3830,7 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
         {
             printf(RED"FAILED : "RESET);
             printf("%s\n" , hookId);
+            canCommitHook = 0;
             return;
         }
         else
@@ -3837,6 +3879,7 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
         {
             printf(RED"FAILED : "RESET);
             printf("%s\n" , hookId);
+            canCommitHook = 0;
             return;
         }
         else
@@ -3888,6 +3931,7 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
         {
             printf(RED"FAILED : "RESET);
             printf("%s\n" , hookId);
+            canCommitHook = 0;
             return;
         }
         else
@@ -3922,20 +3966,23 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
 
         //check if the file has whitespace at the end
         file = fopen(fileAddress , "r");
-        int isFileHasWhitespaceAtTheEnd = 0;
-        while (fgets(line , sizeof(line) , file) != NULL)
+        int isFileHasWhitespaceAtTheEnd = 1;
+        while (fgets(line , sizeof(line) , file) != NULL){}
+        fclose(file);
+        for (size_t i = 0; i < strlen(line); i++)
         {
-            if (line[strlen(line) - 2] == ' ')
+            if (line[i] != ' ' && line[i] != '\t' && line[i] != '\n')
             {
-                isFileHasWhitespaceAtTheEnd = 1;
+                isFileHasWhitespaceAtTheEnd = 0;
                 break;
             }
         }
-        fclose(file);
+        
         if (isFileHasWhitespaceAtTheEnd)
         {
             printf(RED"FAILED : "RESET);
             printf("%s\n" , hookId);
+            canCommitHook = 0;
             return;
         }
         else
@@ -4003,6 +4050,7 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
         {
             printf(RED"FAILED : "RESET);
             printf("%s\n" , hookId);
+            canCommitHook = 0;
             return;
         }
         else
@@ -4058,6 +4106,7 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
         {
             printf(RED"FAILED : "RESET);
             printf("%s\n" , hookId);
+            canCommitHook = 0;
             return;
         }
         else
@@ -4141,7 +4190,7 @@ void PreCommit(char **argv)
         }
     }
     //do the pre commit on given files
-    if (!strcmp(argv[2] , "-f"))
+    else if (!strcmp(argv[2] , "-f"))
     {
         //check if there is any applied hooks
         FILE* appliedHooksTxt = fopen(appliedHooks , "r");
@@ -4174,6 +4223,7 @@ void PreCommit(char **argv)
                     char line2[1000];
                     while (fgets(line2 , sizeof(line2) , appliedHooksTxt) != NULL)
                     {
+                        printf("%s\n" , line2);
                         char hookId[1000] , fileTypes[1000] , description[1000];
                         sscanf(line2 , "%[^-]%*c%[^-]%*c%[^\n]%*c" , hookId , fileTypes , description);
                         ApplyHookOnFile(line , hookId , fileTypes , description);
@@ -4183,6 +4233,51 @@ void PreCommit(char **argv)
                     break;
                 }
                 indForArgv++;
+            }
+        }
+    }
+    //fix the failed hooks if it has the -u flag
+    else if (!strcmp(argv[2] , "-u"))
+    {
+        //check if there is any applied hooks
+        FILE* appliedHooksTxt = fopen(appliedHooks , "r");
+        if (appliedHooksTxt == NULL)
+        {
+            printf("BRUH you don't have any applied hooks :/\n");
+            return;
+        }
+        fclose(appliedHooksTxt);
+        
+        //find all of the files in stage current folder and check for bad things
+        char commandForFind[1000] = "find ";
+        strcat(commandForFind , stagesCurrentAddress);
+        strcat(commandForFind , " -type f 2> .niggit/error.log");
+        FILE* tempForFind = popen(commandForFind , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tempForFind) != NULL)
+        {
+            line[strcspn(line , "\n")] = '\0';
+            FILE* appliedHooksTxt = fopen(line , "r");
+            char line2[1000][1000];
+            int count = 0;
+            while (fgets(line2[count] , sizeof(line2[count]) , appliedHooksTxt) != NULL)
+            {
+                count++;
+            }
+            for (size_t i = 0; i < strlen(line2[count - 1]); i++)
+            {
+                if (strlen(line2[count - 1]) != ' ' && strlen(line2[count - 1]) != '\t' && strlen(line2[count - 1]) != '\n')
+                {
+                    count --;
+                    break;
+                }
+            }
+            fclose(appliedHooksTxt);
+            
+            FILE* fpToOverWrite = fopen(line , "w");
+            for (size_t i = 0; i < count; i++)
+            {
+                fprintf(fpToOverWrite , "%s" , line2[i]);
             }
         }
     }
@@ -4334,7 +4429,205 @@ void PreCommit(char **argv)
         fclose(appliedHooksTxt);
         return;
     }
+    //disable commiting cause of failed hooks and enabling if successful
+    if (!canCommitHook)
+    {
+        FILE* canCommitHookFile = fopen(canCommitHookTxt , "w");
+        fprintf(canCommitHookFile , "0");
+        fclose(canCommitHookFile);
+    }
+    else
+    {
+        FILE* canCommitHookFile = fopen(canCommitHookTxt , "w");
+        fprintf(canCommitHookFile , "1");
+        fclose(canCommitHookFile);
+    }
+}
+void Revert(char **argv)
+{
+    if (!IsNiggitInitialized())
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    // check for flags
+    int doesHaveM = 0 , doesHaveE = 0;
+    int indForArgv = 2;
+    while (argv[indForArgv] != NULL)
+    {
+        if (!strcmp(argv[indForArgv] , "-m"))
+        {
+            doesHaveM = 1;
+        }
+        else if (!strcmp(argv[indForArgv] , "-e"))
+        {
+            doesHaveE = 1;
+        }
+        indForArgv++;
+    }
+    //normal revert
+
+
+}
+void Diff(char **argv)
+{
+    if (!IsNiggitInitialized())
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+
+    //get the file addresses
+    char fileAddress1[1000] = "" , fileAddress2[1000] = "";
+    strcat(fileAddress1 , argv[3]);
+    strcat(fileAddress2 , argv[4]);
+    // get the begin and end line for both files
+    int beginLine1 = 0 , endLine1 = 0 , beginLine2 = 0 , endLine2 = 0;
+    int indexForArgv = 4;
+    while (argv[indexForArgv] != NULL)
+    {
+        if (!strcmp(argv[indexForArgv] , "-line1"))
+        {
+            int begin , end;
+            sscanf(argv[indexForArgv + 1] , "%d-%d" , &begin , &end);
+            beginLine1 = begin;
+            endLine1 = end;
+        }
+        else if (!strcmp(argv[indexForArgv] , "-line2"))
+        {
+            int begin , end;
+            sscanf(argv[indexForArgv + 1] , "%d-%d" , &begin , &end);
+            beginLine2 = begin;
+            endLine2 = end;
+        }  
+        indexForArgv++;
+    }
     
+    if (endLine1 == 0)
+    {
+        endLine1 = 1000000000;
+    }
+    if (endLine2 == 0)
+    {
+        endLine2 = 1000000000;
+    }    
+    
+    //go through eachline of both file and compare lines
+    FILE* file1 = fopen(fileAddress1 , "r");
+    FILE* file2 = fopen(fileAddress2 , "r");
+    if (file1 == NULL || file2 == NULL)
+    {
+        printf("one of the files doesn't exist :/\n");
+        return;
+    }
+    
+    char line1[1000] , line2[1000];
+    int lineNumberFile1 = 1;
+    int lineNumberFile2 = 1;
+    fgets(line2 , sizeof(line2) , file2);
+    fgets(line1 , sizeof(line1) , file1);
+    int isFile1Ended = 0;
+    int isFile2Ended = 0;
+    int didFoundInEquailty = 0;
+    while (1)
+    {
+        //checks if the current line is in the range of begin and end line
+        if (lineNumberFile1 >= beginLine1 && lineNumberFile1 <= endLine1 && lineNumberFile2 >= beginLine2 && lineNumberFile2 <= endLine2)
+        {
+            //check if current line is null space
+            while (1)
+            {
+                //check line file 1
+                int isLine1NullSpace = 1;
+                for (size_t i = 0; i < strlen(line1); i++)
+                {
+                    if (line1[i] != ' ' && line1[i] != '\t' && line1[i] != '\n')
+                    {
+                        isLine1NullSpace = 0;
+                        break;
+                    }
+                }
+                if (isLine1NullSpace)
+                {
+                    if (fgets(line1 , sizeof(line1) , file1) == NULL)
+                    {
+                        break;
+                    }
+                    lineNumberFile1++;
+                }
+                
+                //check line file 2
+                int isLine2NullSpace = 1;
+                for (size_t i = 0; i < strlen(line2); i++)
+                {
+                    if (line2[i] != ' ' && line2[i] != '\t' && line2[i] != '\n')
+                    {
+                        isLine2NullSpace = 0;
+                        break;
+                    }
+                }
+                if (isLine2NullSpace)
+                {
+                    if (fgets(line2 , sizeof(line2) , file2) == NULL)
+                    {
+                        break;
+                    }
+                    lineNumberFile2++;
+                }
+
+                //break if both lines are not null space
+                if (!isLine1NullSpace && !isLine2NullSpace)
+                {
+                    break;
+                }
+            }
+            
+            //checks if the lines are equal
+            if (strcmp(line1 , line2))
+            {
+                printf("<<<<<<< \n");
+                printf(BOLDYELLOW"file address : %s\n" , fileAddress1);
+                printf("line %d : " , lineNumberFile1);
+                printf("%s"RESET , line1);
+                printf("=======\n");
+                printf(BOLDMAGENTA"file address : %s\n" , fileAddress2);
+                printf("line %d : " , lineNumberFile2);
+                printf("%s"RESET , line2);
+                printf(">>>>>>> \n");
+                didFoundInEquailty = 1;
+            }
+        }
+
+        //break if both files are finished
+        if (fgets(line1 , sizeof(line1) , file1))
+        {
+            lineNumberFile1++;
+        }
+        else
+        {
+            isFile1Ended = 1;
+        }
+
+        if (fgets(line2 , sizeof(line2) , file2))
+        {
+            lineNumberFile2++;
+        }
+        else
+        {
+            isFile2Ended = 1;
+        }     
+
+        if (isFile1Ended && isFile2Ended)
+        {
+            break;
+        }
+    }
+
+    //print if there is no equality
+    if (!didFoundInEquailty)
+    {
+        printf("there is no difference between these files :)\n");
+    }
 }
 void Debug(char **argv)
 {
@@ -4460,6 +4753,14 @@ void CommandFinder(char **argv)
     else if (!strcmp(argv[1] , "pre-commit"))
     {
         PreCommit(argv);
+    }
+    else if (!strcmp(argv[1] , "revert"))
+    {
+        Revert(argv);
+    }
+    else if (!strcmp(argv[1] , "diff"))
+    {
+        Diff(argv);
     }
     else if (!strcmp(argv[1] , "debug"))
     {
