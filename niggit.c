@@ -83,6 +83,30 @@ int main(int argc, char **argv)
     CommandFinder(argv);
 }
 //Functions
+void remove_orig_files(char* directory)
+{
+    DIR* dir;
+    struct dirent* entry;
+    char filepath[1024];
+
+    if ((dir = opendir(directory)) == NULL) {
+        perror("Unable to open directory");
+        return;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strstr(entry->d_name, ".orig") != NULL) {
+            snprintf(filepath, sizeof(filepath), "%s/%s", directory, entry->d_name);
+            if (remove(filepath) == 0) {
+                printf("Removed %s\n", filepath);
+            } else {
+                perror("Unable to remove file");
+            }
+        }
+    }
+
+    closedir(dir);
+}
 void count_files(char *base_path, int *file_count) 
 {
     char path[1000];
@@ -4116,6 +4140,113 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
             return;
         }
     }
+    //checks if indentation is allman or k&r
+    else if (!strcmp(hookId , "indentation_check"))
+    {
+        //check if the file is empty
+        FILE* file = fopen(fileAddress , "r");
+        char line[1000];
+        int isFileEmpty = 1;
+        while (fgets(line , sizeof(line) , file) != NULL)
+        {
+            if (strcmp(line , "\n"))
+            {
+                isFileEmpty = 0;
+                break;
+            }
+        }
+        fclose(file);
+        if (isFileEmpty)
+        {
+            printf(GREEN"PASSED : \n"RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+
+        //make a temp copy of the file
+        char commandForCopy[1000] = "cp ";
+        strcat(commandForCopy , fileAddress);
+        strcat(commandForCopy , " ");
+        strcat(commandForCopy , fileAddress);
+        strcat(commandForCopy , ".temp");
+        FILE* tempForCopy = popen(commandForCopy , "r");
+        fclose(tempForCopy);
+
+        //check if the file has allman or k&r indentation
+        int isFileHasAllmanIndentation = 0;
+        int isFileHasKRIndentation = 0;
+        
+        //check if the file has allman or k&r indentation
+        char commandForCheckAllmanIndentation[1000] = "astyle --style=allman ";
+        strcat(commandForCheckAllmanIndentation , fileAddress);
+        strcat(commandForCheckAllmanIndentation , " 2> .niggit/error.log");
+        char commandForCheckKRIndentation[1000] = "astyle --style=kr ";
+        strcat(commandForCheckKRIndentation , fileAddress);
+        strcat(commandForCheckKRIndentation , " 2> .niggit/error.log");
+
+        FILE* tempForCheckAllmanIndentation = popen(commandForCheckAllmanIndentation , "r");
+        FILE* tempForCheckKRIndentation = popen(commandForCheckKRIndentation , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , tempForCheckAllmanIndentation) != NULL)
+        {
+            if (strstr(line2 , "Formatted") != NULL)
+            {
+                isFileHasAllmanIndentation = 0;
+            }
+            else if (strstr(line2 , "Unchanged") != NULL)
+            {
+                isFileHasAllmanIndentation = 1;
+                break; 
+            }
+        }
+        while (fgets(line2 , sizeof(line2) , tempForCheckKRIndentation) != NULL)
+        {
+            if (strstr(line2 , "Formatted") != NULL)
+            {
+                isFileHasKRIndentation = 0;
+            }
+            else if (strstr(line2 , "Unchanged") != NULL)
+            {
+                isFileHasKRIndentation = 1;
+                break; 
+            }
+        }
+        fclose(tempForCheckAllmanIndentation);
+        fclose(tempForCheckKRIndentation);  
+
+        //remove the temp copy of the file
+        char commandForRemove[1000] = "rm ";
+        strcat(commandForRemove , fileAddress);
+        FILE* tempForRemove = popen(commandForRemove , "r");
+        fclose(tempForRemove);
+        //remove .orig file
+        char commandForRemoveOrig[1000] = "rm ";
+        strcat(commandForRemoveOrig , fileAddress);
+        strcat(commandForRemoveOrig , ".orig");
+        FILE* tempForRemoveOrig = popen(commandForRemoveOrig , "r");
+        fclose(tempForRemoveOrig);
+        //rename .temp to main file address
+        char commandForRename[1000] = "mv ";
+        strcat(commandForRename , fileAddress);
+        strcat(commandForRename , ".temp ");
+        strcat(commandForRename , fileAddress);
+        FILE* tempForRename = popen(commandForRename , "r");
+        fclose(tempForRename);
+
+        if (!isFileHasAllmanIndentation && !isFileHasKRIndentation)
+        {
+            printf(RED"FAILED : "RESET);
+            printf("%s\n" , hookId);
+            canCommitHook = 0;
+            return;
+        }
+        else
+        {
+            printf(GREEN"PASSED : "RESET);
+            printf("%s\n" , hookId);
+            return;
+        }
+    }
 }
 void PreCommit(char **argv)
 {
@@ -4257,6 +4388,22 @@ void PreCommit(char **argv)
         while (fgets(line , sizeof(line) , tempForFind) != NULL)
         {
             line[strcspn(line , "\n")] = '\0';
+            //correct the indentation
+            char commandForCheckAllmanIndentation[1000] = "astyle --style=allman ";
+            strcat(commandForCheckAllmanIndentation , line);
+            strcat(commandForCheckAllmanIndentation , " 2> .niggit/error.log");
+            FILE* fileNIGGER = popen(commandForCheckAllmanIndentation , "r");
+            fclose(fileNIGGER);
+
+            // char fileAddressWithOrig[1000] = "";
+            // strcat(fileAddressWithOrig , line);
+            // strcat(fileAddressWithOrig , ".orig");
+            // char commandForDeleteOrigFile[1000] = "rm ";
+            // strcat(commandForDeleteOrigFile , fileAddressWithOrig);
+            // strcat(commandForDeleteOrigFile , " 2> .niggit/error.log");
+            // system(commandForDeleteOrigFile);
+
+            //delete null space at the end of the file
             FILE* appliedHooksTxt = fopen(line , "r");
             char line2[1000][1000];
             int count = 0;
@@ -4477,157 +4624,165 @@ void Diff(char **argv)
         return;
     }
 
-    //get the file addresses
-    char fileAddress1[1000] = "" , fileAddress2[1000] = "";
-    strcat(fileAddress1 , argv[3]);
-    strcat(fileAddress2 , argv[4]);
-    // get the begin and end line for both files
-    int beginLine1 = 0 , endLine1 = 0 , beginLine2 = 0 , endLine2 = 0;
-    int indexForArgv = 4;
-    while (argv[indexForArgv] != NULL)
+    if (!strcmp(argv[2] , "-f"))
     {
-        if (!strcmp(argv[indexForArgv] , "-line1"))
+        //get the file addresses
+        char fileAddress1[1000] = "" , fileAddress2[1000] = "";
+        strcat(fileAddress1 , argv[3]);
+        strcat(fileAddress2 , argv[4]);
+        // get the begin and end line for both files
+        int beginLine1 = 0 , endLine1 = 0 , beginLine2 = 0 , endLine2 = 0;
+        int indexForArgv = 4;
+        while (argv[indexForArgv] != NULL)
         {
-            int begin , end;
-            sscanf(argv[indexForArgv + 1] , "%d-%d" , &begin , &end);
-            beginLine1 = begin;
-            endLine1 = end;
-        }
-        else if (!strcmp(argv[indexForArgv] , "-line2"))
-        {
-            int begin , end;
-            sscanf(argv[indexForArgv + 1] , "%d-%d" , &begin , &end);
-            beginLine2 = begin;
-            endLine2 = end;
-        }  
-        indexForArgv++;
-    }
-    
-    if (endLine1 == 0)
-    {
-        endLine1 = 1000000000;
-    }
-    if (endLine2 == 0)
-    {
-        endLine2 = 1000000000;
-    }    
-    
-    //go through eachline of both file and compare lines
-    FILE* file1 = fopen(fileAddress1 , "r");
-    FILE* file2 = fopen(fileAddress2 , "r");
-    if (file1 == NULL || file2 == NULL)
-    {
-        printf("one of the files doesn't exist :/\n");
-        return;
-    }
-    
-    char line1[1000] , line2[1000];
-    int lineNumberFile1 = 1;
-    int lineNumberFile2 = 1;
-    fgets(line2 , sizeof(line2) , file2);
-    fgets(line1 , sizeof(line1) , file1);
-    int isFile1Ended = 0;
-    int isFile2Ended = 0;
-    int didFoundInEquailty = 0;
-    while (1)
-    {
-        //checks if the current line is in the range of begin and end line
-        if (lineNumberFile1 >= beginLine1 && lineNumberFile1 <= endLine1 && lineNumberFile2 >= beginLine2 && lineNumberFile2 <= endLine2)
-        {
-            //check if current line is null space
-            while (1)
+            if (!strcmp(argv[indexForArgv] , "-line1"))
             {
-                //check line file 1
-                int isLine1NullSpace = 1;
-                for (size_t i = 0; i < strlen(line1); i++)
+                int begin , end;
+                sscanf(argv[indexForArgv + 1] , "%d-%d" , &begin , &end);
+                beginLine1 = begin;
+                endLine1 = end;
+            }
+            else if (!strcmp(argv[indexForArgv] , "-line2"))
+            {
+                int begin , end;
+                sscanf(argv[indexForArgv + 1] , "%d-%d" , &begin , &end);
+                beginLine2 = begin;
+                endLine2 = end;
+            }  
+            indexForArgv++;
+        }
+
+        if (endLine1 == 0)
+        {
+            endLine1 = 1000000000;
+        }
+        if (endLine2 == 0)
+        {
+            endLine2 = 1000000000;
+        }    
+
+        //go through eachline of both file and compare lines
+        FILE* file1 = fopen(fileAddress1 , "r");
+        FILE* file2 = fopen(fileAddress2 , "r");
+        if (file1 == NULL || file2 == NULL)
+        {
+            printf("one of the files doesn't exist :/\n");
+            return;
+        }
+
+        char line1[1000] , line2[1000];
+        int lineNumberFile1 = 1;
+        int lineNumberFile2 = 1;
+        fgets(line2 , sizeof(line2) , file2);
+        fgets(line1 , sizeof(line1) , file1);
+        int isFile1Ended = 0;
+        int isFile2Ended = 0;
+        int didFoundInEquailty = 0;
+        while (1)
+        {
+            //checks if the current line is in the range of begin and end line
+            if (lineNumberFile1 >= beginLine1 && lineNumberFile1 <= endLine1 && lineNumberFile2 >= beginLine2 && lineNumberFile2 <= endLine2)
+            {
+                //check if current line is null space
+                while (1)
                 {
-                    if (line1[i] != ' ' && line1[i] != '\t' && line1[i] != '\n')
+                    //check line file 1
+                    int isLine1NullSpace = 1;
+                    for (size_t i = 0; i < strlen(line1); i++)
                     {
-                        isLine1NullSpace = 0;
+                        if (line1[i] != ' ' && line1[i] != '\t' && line1[i] != '\n')
+                        {
+                            isLine1NullSpace = 0;
+                            break;
+                        }
+                    }
+                    if (isLine1NullSpace)
+                    {
+                        if (fgets(line1 , sizeof(line1) , file1) == NULL)
+                        {
+                            break;
+                        }
+                        lineNumberFile1++;
+                    }
+
+                    //check line file 2
+                    int isLine2NullSpace = 1;
+                    for (size_t i = 0; i < strlen(line2); i++)
+                    {
+                        if (line2[i] != ' ' && line2[i] != '\t' && line2[i] != '\n')
+                        {
+                            isLine2NullSpace = 0;
+                            break;
+                        }
+                    }
+                    if (isLine2NullSpace)
+                    {
+                        if (fgets(line2 , sizeof(line2) , file2) == NULL)
+                        {
+                            break;
+                        }
+                        lineNumberFile2++;
+                    }
+
+                    //break if both lines are not null space
+                    if (!isLine1NullSpace && !isLine2NullSpace)
+                    {
                         break;
                     }
-                }
-                if (isLine1NullSpace)
-                {
-                    if (fgets(line1 , sizeof(line1) , file1) == NULL)
-                    {
-                        break;
-                    }
-                    lineNumberFile1++;
-                }
-                
-                //check line file 2
-                int isLine2NullSpace = 1;
-                for (size_t i = 0; i < strlen(line2); i++)
-                {
-                    if (line2[i] != ' ' && line2[i] != '\t' && line2[i] != '\n')
-                    {
-                        isLine2NullSpace = 0;
-                        break;
-                    }
-                }
-                if (isLine2NullSpace)
-                {
-                    if (fgets(line2 , sizeof(line2) , file2) == NULL)
-                    {
-                        break;
-                    }
-                    lineNumberFile2++;
                 }
 
-                //break if both lines are not null space
-                if (!isLine1NullSpace && !isLine2NullSpace)
+                //checks if the lines are equal
+                if (strcmp(line1 , line2))
                 {
-                    break;
+                    printf("<<<<<<< \n");
+                    printf(BOLDYELLOW"file address : %s\n" , fileAddress1);
+                    printf("line %d : " , lineNumberFile1);
+                    printf("%s"RESET , line1);
+                    printf("=======\n");
+                    printf(BOLDMAGENTA"file address : %s\n" , fileAddress2);
+                    printf("line %d : " , lineNumberFile2);
+                    printf("%s"RESET , line2);
+                    printf(">>>>>>> \n");
+                    didFoundInEquailty = 1;
                 }
             }
-            
-            //checks if the lines are equal
-            if (strcmp(line1 , line2))
+
+            //break if both files are finished
+            if (fgets(line1 , sizeof(line1) , file1))
             {
-                printf("<<<<<<< \n");
-                printf(BOLDYELLOW"file address : %s\n" , fileAddress1);
-                printf("line %d : " , lineNumberFile1);
-                printf("%s"RESET , line1);
-                printf("=======\n");
-                printf(BOLDMAGENTA"file address : %s\n" , fileAddress2);
-                printf("line %d : " , lineNumberFile2);
-                printf("%s"RESET , line2);
-                printf(">>>>>>> \n");
-                didFoundInEquailty = 1;
+                lineNumberFile1++;
+            }
+            else
+            {
+                isFile1Ended = 1;
+            }
+
+            if (fgets(line2 , sizeof(line2) , file2))
+            {
+                lineNumberFile2++;
+            }
+            else
+            {
+                isFile2Ended = 1;
+            }     
+
+            if (isFile1Ended && isFile2Ended)
+            {
+                break;
             }
         }
 
-        //break if both files are finished
-        if (fgets(line1 , sizeof(line1) , file1))
+        //print if there is no equality
+        if (!didFoundInEquailty)
         {
-            lineNumberFile1++;
-        }
-        else
-        {
-            isFile1Ended = 1;
-        }
-
-        if (fgets(line2 , sizeof(line2) , file2))
-        {
-            lineNumberFile2++;
-        }
-        else
-        {
-            isFile2Ended = 1;
-        }     
-
-        if (isFile1Ended && isFile2Ended)
-        {
-            break;
+            printf("there is no difference between these files :)\n");
         }
     }
-
-    //print if there is no equality
-    if (!didFoundInEquailty)
+    if (!strcmp(argv[2] , "-c"))
     {
-        printf("there is no difference between these files :)\n");
+        
     }
+    
 }
 void Debug(char **argv)
 {
