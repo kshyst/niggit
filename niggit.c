@@ -41,6 +41,11 @@
 #define tempAppliedHooks ".niggit/configs/temp-applied-hooks.txt"
 #define hooksTextFile "/home/kshyst/.niggit-settings/hooks.txt"
 #define canCommitHookTxt ".niggit/configs/can-commit-hook.txt"
+//stash repo
+#define stashRepo ".niggit/stash"
+#define stashCount ".niggit/stash/stash-count.txt"
+#define stashLatest ".niggit/stash/stash-latest.txt"
+#define stashList ".niggit/stash/stash-list.txt"
 //colors
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
@@ -2749,7 +2754,7 @@ void CheckOut(char **argv)
                 line[strlen(line) - 1] = '\0';
                 char commandForDelete2[1000] = "rm -r \"";
                 strcat(commandForDelete2 , line);
-                strcat(commandForDelete2 , "\"");
+                strcat(commandForDelete2 , "\" 2> .niggit/error.log");
                 system(commandForDelete2);
             }
         }
@@ -4388,44 +4393,57 @@ void PreCommit(char **argv)
         while (fgets(line , sizeof(line) , tempForFind) != NULL)
         {
             line[strcspn(line , "\n")] = '\0';
-            //correct the indentation
-            char commandForCheckAllmanIndentation[1000] = "astyle --style=allman ";
-            strcat(commandForCheckAllmanIndentation , line);
-            strcat(commandForCheckAllmanIndentation , " 2> .niggit/error.log");
-            FILE* fileNIGGER = popen(commandForCheckAllmanIndentation , "r");
-            fclose(fileNIGGER);
-
-            // char fileAddressWithOrig[1000] = "";
-            // strcat(fileAddressWithOrig , line);
-            // strcat(fileAddressWithOrig , ".orig");
-            // char commandForDeleteOrigFile[1000] = "rm ";
-            // strcat(commandForDeleteOrigFile , fileAddressWithOrig);
-            // strcat(commandForDeleteOrigFile , " 2> .niggit/error.log");
-            // system(commandForDeleteOrigFile);
-
             //delete null space at the end of the file
             FILE* appliedHooksTxt = fopen(line , "r");
             char line2[1000][1000];
-            int count = 0;
+            int count = 0 , countToPrint = 0;
             while (fgets(line2[count] , sizeof(line2[count]) , appliedHooksTxt) != NULL)
             {
                 count++;
             }
-            for (size_t i = 0; i < strlen(line2[count - 1]); i++)
+            for (size_t i = 0; i < count; i++)
             {
-                if (strlen(line2[count - 1]) != ' ' && strlen(line2[count - 1]) != '\t' && strlen(line2[count - 1]) != '\n')
+                int isAllNullSpaces = 1;
+                for (size_t j = 0; j < strlen(line2[i]) - 1; j++)
+                {
+                    if (line2[i][j] != ' ' && line2[i][j] != '\t')
+                    {
+                        isAllNullSpaces = 0;
+                        break;
+                    }
+                }
+                if (isAllNullSpaces)
                 {
                     count --;
                     break;
-                }
+                }  
+                countToPrint++;         
             }
             fclose(appliedHooksTxt);
             
             FILE* fpToOverWrite = fopen(line , "w");
-            for (size_t i = 0; i < count; i++)
+            for (size_t i = 0; i < countToPrint; i++)
             {
                 fprintf(fpToOverWrite , "%s" , line2[i]);
             }
+            fclose(fpToOverWrite);
+            
+            //correct the indentation
+            char commandForCheckAllmanIndentation[1000] = "astyle --style=allman \"";
+            strcat(commandForCheckAllmanIndentation , line);
+            strcat(commandForCheckAllmanIndentation , "\" 2> .niggit/error.log");
+            FILE* fileNIGGER = popen(commandForCheckAllmanIndentation , "r");
+            fclose(fileNIGGER);
+
+            char fileAddressWithOrig[1000] = "";
+            strcat(fileAddressWithOrig , line);
+            strcat(fileAddressWithOrig , ".orig");
+            char commandForDeleteOrigFile[1000] = "rm ";
+            strcat(commandForDeleteOrigFile , fileAddressWithOrig);
+            strcat(commandForDeleteOrigFile , " 2> .niggit/error.log");
+            system(commandForDeleteOrigFile);
+
+            
         }
     }
     //print hooks list
@@ -4616,6 +4634,124 @@ void Revert(char **argv)
 
 
 }
+void DiffFounder(char fileAddress11[1000] , char fileAddress21[1000] , int line1Begin , int line1End , int line2Begin , int line2End)
+{
+    //get the file addresses
+    char fileAddress1[1000] = "" , fileAddress2[1000] = "";
+    strcat(fileAddress1 , fileAddress11);
+    strcat(fileAddress2 , fileAddress21);
+    // get the begin and end line for both files
+    int beginLine1 = line1Begin , endLine1 = line1End , beginLine2 = line2Begin , endLine2 = line2End;
+     
+    //go through eachline of both file and compare lines
+    FILE* file1 = fopen(fileAddress1 , "r");
+    FILE* file2 = fopen(fileAddress2 , "r");
+    if (file1 == NULL || file2 == NULL)
+    {
+        printf("one of the files doesn't exist :/\n");
+        return;
+    }
+    char line1[1000] , line2[1000];
+    int lineNumberFile1 = 1;
+    int lineNumberFile2 = 1;
+    fgets(line2 , sizeof(line2) , file2);
+    fgets(line1 , sizeof(line1) , file1);
+    int isFile1Ended = 0;
+    int isFile2Ended = 0;
+    int didFoundInEquailty = 0;
+    while (1)
+    {
+        //checks if the current line is in the range of begin and end line
+        if (lineNumberFile1 >= beginLine1 && lineNumberFile1 <= endLine1 && lineNumberFile2 >= beginLine2 && lineNumberFile2 <= endLine2)
+        {
+            //check if current line is null space
+            while (1)
+            {
+                //check line file 1
+                int isLine1NullSpace = 1;
+                for (size_t i = 0; i < strlen(line1); i++)
+                {
+                    if (line1[i] != ' ' && line1[i] != '\t' && line1[i] != '\n')
+                    {
+                        isLine1NullSpace = 0;
+                        break;
+                    }
+                }
+                if (isLine1NullSpace)
+                {
+                    if (fgets(line1 , sizeof(line1) , file1) == NULL)
+                    {
+                        break;
+                    }
+                    lineNumberFile1++;
+                }
+                //check line file 2
+                int isLine2NullSpace = 1;
+                for (size_t i = 0; i < strlen(line2); i++)
+                {
+                    if (line2[i] != ' ' && line2[i] != '\t' && line2[i] != '\n')
+                    {
+                        isLine2NullSpace = 0;
+                        break;
+                    }
+                }
+                if (isLine2NullSpace)
+                {
+                    if (fgets(line2 , sizeof(line2) , file2) == NULL)
+                    {
+                        break;
+                    }
+                    lineNumberFile2++;
+                }
+                //break if both lines are not null space
+                if (!isLine1NullSpace && !isLine2NullSpace)
+                {
+                    break;
+                }
+            }
+            //checks if the lines are equal
+            if (strcmp(line1 , line2))
+            {
+                printf("<<<<<<< \n");
+                printf(BOLDYELLOW"file address : %s\n" , fileAddress1);
+                printf("line %d : " , lineNumberFile1);
+                printf("%s"RESET , line1);
+                printf("=======\n");
+                printf(BOLDMAGENTA"file address : %s\n" , fileAddress2);
+                printf("line %d : " , lineNumberFile2);
+                printf("%s"RESET , line2);
+                printf(">>>>>>> \n");
+                didFoundInEquailty = 1;
+            }
+        }
+        //break if both files are finished
+        if (fgets(line1 , sizeof(line1) , file1))
+        {
+            lineNumberFile1++;
+        }
+        else
+        {
+            isFile1Ended = 1;
+        }
+        if (fgets(line2 , sizeof(line2) , file2))
+        {
+            lineNumberFile2++;
+        }
+        else
+        {
+            isFile2Ended = 1;
+        }     
+        if (isFile1Ended && isFile2Ended)
+        {
+            break;
+        }
+    }
+    //print if there is no equality
+    if (!didFoundInEquailty)
+    {
+        printf("there is no difference between these files :)\n");
+    }
+}
 void Diff(char **argv)
 {
     if (!IsNiggitInitialized())
@@ -4626,12 +4762,10 @@ void Diff(char **argv)
 
     if (!strcmp(argv[2] , "-f"))
     {
-        //get the file addresses
         char fileAddress1[1000] = "" , fileAddress2[1000] = "";
         strcat(fileAddress1 , argv[3]);
         strcat(fileAddress2 , argv[4]);
-        // get the begin and end line for both files
-        int beginLine1 = 0 , endLine1 = 0 , beginLine2 = 0 , endLine2 = 0;
+        int beginLine1 = 1 , endLine1 = 0 , beginLine2 = 1 , endLine2 = 0;
         int indexForArgv = 4;
         while (argv[indexForArgv] != NULL)
         {
@@ -4659,138 +4793,465 @@ void Diff(char **argv)
         if (endLine2 == 0)
         {
             endLine2 = 1000000000;
-        }    
-
-        //go through eachline of both file and compare lines
-        FILE* file1 = fopen(fileAddress1 , "r");
-        FILE* file2 = fopen(fileAddress2 , "r");
-        if (file1 == NULL || file2 == NULL)
+        }   
+    
+        DiffFounder(fileAddress1 , fileAddress2 , beginLine1 , endLine1 , beginLine2 , endLine2);
+    }
+    if (!strcmp(argv[2] , "-c"))
+    {
+        char commitId1[1000] = "" , commitId2[1000] = "";
+        strcat(commitId1 , argv[3]);
+        strcat(commitId2 , argv[4]);
+        
+        // finding the name of branch of commit
+        char branchOfCommit[1000] = "";
+        char branchOfCommitAddress[1000] = "";
+        FILE* globalCommitListTxtFile = fopen(globalCommitList , "r");
+        char gNames[1000];
+        int isCommitFound = 0;
+        while (fgets(gNames , sizeof(gNames) , globalCommitListTxtFile))
         {
-            printf("one of the files doesn't exist :/\n");
-            return;
-        }
-
-        char line1[1000] , line2[1000];
-        int lineNumberFile1 = 1;
-        int lineNumberFile2 = 1;
-        fgets(line2 , sizeof(line2) , file2);
-        fgets(line1 , sizeof(line1) , file1);
-        int isFile1Ended = 0;
-        int isFile2Ended = 0;
-        int didFoundInEquailty = 0;
-        while (1)
-        {
-            //checks if the current line is in the range of begin and end line
-            if (lineNumberFile1 >= beginLine1 && lineNumberFile1 <= endLine1 && lineNumberFile2 >= beginLine2 && lineNumberFile2 <= endLine2)
+            char id[1000] , message[1000] , time[1000] , branch[1000] , username[1000] , fileCount[1000] , email[1000];
+            sscanf(gNames , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , id , message , time , branch , username , email , fileCount  );
+            if (!strcmp(commitId1 , id))
             {
-                //check if current line is null space
-                while (1)
-                {
-                    //check line file 1
-                    int isLine1NullSpace = 1;
-                    for (size_t i = 0; i < strlen(line1); i++)
-                    {
-                        if (line1[i] != ' ' && line1[i] != '\t' && line1[i] != '\n')
-                        {
-                            isLine1NullSpace = 0;
-                            break;
-                        }
-                    }
-                    if (isLine1NullSpace)
-                    {
-                        if (fgets(line1 , sizeof(line1) , file1) == NULL)
-                        {
-                            break;
-                        }
-                        lineNumberFile1++;
-                    }
-
-                    //check line file 2
-                    int isLine2NullSpace = 1;
-                    for (size_t i = 0; i < strlen(line2); i++)
-                    {
-                        if (line2[i] != ' ' && line2[i] != '\t' && line2[i] != '\n')
-                        {
-                            isLine2NullSpace = 0;
-                            break;
-                        }
-                    }
-                    if (isLine2NullSpace)
-                    {
-                        if (fgets(line2 , sizeof(line2) , file2) == NULL)
-                        {
-                            break;
-                        }
-                        lineNumberFile2++;
-                    }
-
-                    //break if both lines are not null space
-                    if (!isLine1NullSpace && !isLine2NullSpace)
-                    {
-                        break;
-                    }
-                }
-
-                //checks if the lines are equal
-                if (strcmp(line1 , line2))
-                {
-                    printf("<<<<<<< \n");
-                    printf(BOLDYELLOW"file address : %s\n" , fileAddress1);
-                    printf("line %d : " , lineNumberFile1);
-                    printf("%s"RESET , line1);
-                    printf("=======\n");
-                    printf(BOLDMAGENTA"file address : %s\n" , fileAddress2);
-                    printf("line %d : " , lineNumberFile2);
-                    printf("%s"RESET , line2);
-                    printf(">>>>>>> \n");
-                    didFoundInEquailty = 1;
-                }
-            }
-
-            //break if both files are finished
-            if (fgets(line1 , sizeof(line1) , file1))
-            {
-                lineNumberFile1++;
-            }
-            else
-            {
-                isFile1Ended = 1;
-            }
-
-            if (fgets(line2 , sizeof(line2) , file2))
-            {
-                lineNumberFile2++;
-            }
-            else
-            {
-                isFile2Ended = 1;
-            }     
-
-            if (isFile1Ended && isFile2Ended)
-            {
+                strcat(branchOfCommit , branch);
+                isCommitFound = 1;
                 break;
             }
         }
 
-        //print if there is no equality
-        if (!didFoundInEquailty)
+        if (!isCommitFound)
+        {
+            printf("BRUH this commit doesn't exists :/\n");
+            return;
+        }
+
+        // finding the address of the root of the branch
+        FILE* branchesTxtFile = fopen(branchesTextFile , "r");
+        char bNames[1000];
+        int isBranchFound = 0;
+        while (fgets(bNames , sizeof(bNames) , branchesTxtFile))
+        {
+            char name[1000] , address[1000];
+            sscanf(bNames , "%[^-]%*c%[^\n]%*c" , name , address );
+            if (!strcmp(branchOfCommit , name))
+            {
+                strcat(branchOfCommitAddress , address);
+                isBranchFound = 1;
+                break;
+            }
+        }
+
+        if (!isBranchFound)
+        {
+            printf("BRUH this branch doesn't exists :/\n");
+            return;
+        }
+
+        // finding the address of the commit
+        char commitAddress1[1000] = "";
+        strcat(commitAddress1 , branchOfCommitAddress);
+        strcat(commitAddress1 , "/.commits/");
+        strcat(commitAddress1 , commitId1);
+
+        // finding the name of branch of commit2
+        char branchOfCommit2[1000] = "";
+        char branchOfCommitAddress2[1000] = "";
+        FILE* globalCommitListTxtFile2 = fopen(globalCommitList , "r");
+        char gNames2[1000];
+        int isCommitFound2 = 0;
+        while (fgets(gNames2 , sizeof(gNames2) , globalCommitListTxtFile2))
+        {
+            char id[1000] , message[1000] , time[1000] , branch[1000] , username[1000] , fileCount[1000] , email[1000];
+            sscanf(gNames2 , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , id , message , time , branch , username , email , fileCount  );
+            if (!strcmp(commitId2 , id))
+            {
+                strcat(branchOfCommit2 , branch);
+                isCommitFound2 = 1;
+                break;
+            }
+        }
+
+        if (!isCommitFound2)
+        {
+            printf("BRUH this commit doesn't exists :/\n");
+            return;
+        }
+
+        // finding the address of the root of the branch
+        FILE* branchesTxtFile2 = fopen(branchesTextFile , "r");
+        char bNames2[1000];
+        int isBranchFound2 = 0;
+        while (fgets(bNames2 , sizeof(bNames2) , branchesTxtFile2))
+        {
+            char name[1000] , address[1000];
+            sscanf(bNames2 , "%[^-]%*c%[^\n]%*c" , name , address );
+            if (!strcmp(branchOfCommit2 , name))
+            {
+                strcat(branchOfCommitAddress2 , address);
+                isBranchFound2 = 1;
+                break;
+            }
+        }
+
+        if (!isBranchFound2)
+        {
+            printf("BRUH this branch doesn't exists :/\n");
+            return;
+        }
+
+        // finding the address of the commit
+        char commitAddress2[1000] = "";
+        strcat(commitAddress2 , branchOfCommitAddress2);
+        strcat(commitAddress2 , "/.commits/");
+        strcat(commitAddress2 , commitId2);
+    
+        //find and print the files in commit1 that doesnt exist in commit 2
+        printf(BOLDYELLOW"files that %s has but %s doesn't\n"RESET , commitId1 , commitId2);
+        int didFoundDifFile1 = 0;
+        char commandForFind[1000] = "find ";
+        strcat(commandForFind , commitAddress1);
+        strcat(commandForFind , " -type f 2> .niggit/error.log");
+        FILE* tempForFind = popen(commandForFind , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tempForFind) != NULL)
+        {
+            line[strcspn(line , "\n")] = '\0';
+
+            //delete the commitaddress1 from the line
+            char lineWithoutCommitAddress1[1000] = "";
+            int indForLine = strlen(commitAddress1) + 1;
+            while (line[indForLine] != '\0')
+            {
+                lineWithoutCommitAddress1[indForLine - strlen(commitAddress1) - 1] = line[indForLine];
+                indForLine++;
+            }
+
+            //check if the file exists in commit2
+            char commandForFind2[1000] = "find ";
+            strcat(commandForFind2 , commitAddress2);
+            strcat(commandForFind2 , " -type f 2> .niggit/error.log");
+            FILE* tempForFind2 = popen(commandForFind2 , "r");
+            char line2[1000];
+            int isFileFound = 0;
+            while (fgets(line2 , sizeof(line2) , tempForFind2) != NULL)
+            {
+                line2[strcspn(line2 , "\n")] = '\0';
+
+                //delete the commitaddress2 from the line
+                char lineWithoutCommitAddress2[1000] = "";
+                int indForLine2 = strlen(commitAddress2) + 1;
+                while (line2[indForLine2] != '\0')
+                {
+                    lineWithoutCommitAddress2[indForLine2 - strlen(commitAddress2) - 1] = line2[indForLine2];
+                    indForLine2++;
+                }
+
+                if (!strcmp(lineWithoutCommitAddress1 , lineWithoutCommitAddress2))
+                {
+                    isFileFound = 1;
+                    break;
+                }
+            }
+            fclose(tempForFind2);
+
+            //print the file if it doesn't exist in commit2
+            if (!isFileFound)
+            {
+                printf(RED"file address : %s\n" , line + strlen(commitAddress1) + 1);
+                didFoundDifFile1 = 1;
+            }
+        }
+     
+        fclose(tempForFind);
+
+        if (!didFoundDifFile1)
         {
             printf("there is no difference between these files :)\n");
         }
-    }
-    if (!strcmp(argv[2] , "-c"))
-    {
+        //find and print the files in commit2 that doesnt exist in commit 1
+        printf(BOLDYELLOW"files that %s has but %s doesn't\n"RESET , commitId2 , commitId1);
+        int didFoundDifFile2 = 0;
+        char commandForFind3[1000] = "find ";
+        strcat(commandForFind3 , commitAddress2);
+        strcat(commandForFind3 , " -type f 2> .niggit/error.log");
+        FILE* tempForFind3 = popen(commandForFind3 , "r");
+        char line3[1000];
+        while (fgets(line3 , sizeof(line3) , tempForFind3) != NULL)
+        {
+            line3[strcspn(line3 , "\n")] = '\0';
+
+            //delete the commitaddress1 from the line
+            char lineWithoutCommitAddress1[1000] = "";
+            int indForLine = strlen(commitAddress2) + 1;
+            while (line3[indForLine] != '\0')
+            {
+                lineWithoutCommitAddress1[indForLine - strlen(commitAddress2) - 1] = line3[indForLine];
+                indForLine++;
+            }
+
+            //check if the file exists in commit2
+            char commandForFind2[1000] = "find ";
+            strcat(commandForFind2 , commitAddress1);
+            strcat(commandForFind2 , " -type f 2> .niggit/error.log");
+            FILE* tempForFind2 = popen(commandForFind2 , "r");
+            char line2[1000];
+            int isFileFound = 0;
+            while (fgets(line2 , sizeof(line2) , tempForFind2) != NULL)
+            {
+                line2[strcspn(line2 , "\n")] = '\0';
+
+                //delete the commitaddress2 from the line
+                char lineWithoutCommitAddress2[1000] = "";
+                int indForLine2 = strlen(commitAddress1) + 1;
+                while (line2[indForLine2] != '\0')
+                {
+                    lineWithoutCommitAddress2[indForLine2 - strlen(commitAddress1) - 1] = line2[indForLine2];
+                    indForLine2++;
+                }
+
+                if (!strcmp(lineWithoutCommitAddress1 , lineWithoutCommitAddress2))
+                {
+                    isFileFound = 1;
+                    break;
+                }
+            }
+            fclose(tempForFind2);
+
+            //print the file if it doesn't exist in commit2
+            if (!isFileFound)
+            {
+                printf(RED"file address : %s\n" , line3 + strlen(commitAddress2) + 1);
+                didFoundDifFile2 = 1;
+            }
+        }
         
+        fclose(tempForFind3);
+
+        if (!didFoundDifFile2)
+        {
+            printf("there is no difference between these files :)\n");
+        }
+
+        // go through same files and print the difference
+        printf(BOLDYELLOW"files that %s and %s have but are different\n"RESET , commitId1 , commitId2);
+        char commandForFind4[1000] = "find ";
+        strcat(commandForFind4 , commitAddress1);
+        strcat(commandForFind4 , " -type f 2> .niggit/error.log");
+        FILE* tempForFind4 = popen(commandForFind4 , "r");
+        char line4[1000];
+        while (fgets(line4 , sizeof(line4) , tempForFind4))
+        {
+            line4[strcspn(line4 , "\n")] = '\0';
+
+            //delete the commitaddress1 from the line
+            char lineWithoutCommitAddress1[1000] = "";
+            int indForLine = strlen(commitAddress1) + 1;
+            while (line4[indForLine] != '\0')
+            {
+                lineWithoutCommitAddress1[indForLine - strlen(commitAddress1) - 1] = line4[indForLine];
+                indForLine++;
+            }
+
+            //check if the file exists in commit2
+            char commandForFind2[1000] = "find ";
+            strcat(commandForFind2 , commitAddress2);
+            strcat(commandForFind2 , " -type f 2> .niggit/error.log");
+            FILE* tempForFind2 = popen(commandForFind2 , "r");
+            char line2[1000];
+            int isFileFound = 0;
+            while (fgets(line2 , sizeof(line2) , tempForFind2))
+            {
+                line2[strcspn(line2 , "\n")] = '\0';
+
+                //delete the commitaddress2 from the line
+                char lineWithoutCommitAddress2[1000] = "";
+                int indForLine2 = strlen(commitAddress2) + 1;
+                while (line2[indForLine2] != '\0')
+                {
+                    lineWithoutCommitAddress2[indForLine2 - strlen(commitAddress2) - 1] = line2[indForLine2];
+                    indForLine2++;
+                }
+
+                if (!strcmp(lineWithoutCommitAddress1 , lineWithoutCommitAddress2))
+                {
+                    isFileFound = 1;
+                    DiffFounder(line4 , line2 , 1 , 1000000000 , 1 , 1000000000);
+                    break;
+                }
+            }
+        }
+        
+    }
+    
+}
+void Stash(char **argv)
+{
+    if (!IsNiggitInitialized())
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    if (!opendir(stashRepo))
+    {
+        mkdir(stashRepo , 0777);
+    }
+    
+    // get stash count
+    FILE* stashCountTxt = fopen(stashCount , "r");
+    if (!stashCountTxt)
+    {
+        stashCountTxt = fopen(stashCount , "w");
+        fprintf(stashCountTxt , "0");
+        fclose(stashCountTxt);
+        stashCountTxt = fopen(stashCount , "r");
+    }
+    int stashCounts;
+    fscanf(stashCountTxt , "%d" , &stashCounts);
+    fclose(stashCountTxt);
+
+    // stash push
+    if (!strcmp(argv[2] , "push") && (argv[3] == NULL) || !strcmp(argv[3] , "-m"))
+    {
+        //get message
+        char message[1000] = "";
+        if (argv[3] != NULL)
+        {
+            strcat(message , argv[4]);
+        }
+        else
+        {
+            strcat(message , "no message");
+        }
+        //make folder for stash
+        char stashAddress[1000] = "";
+        strcat(stashAddress , stashRepo);
+        strcat(stashAddress , "/stash");
+        char stashCountString[100];
+        sprintf(stashCountString, "%d", stashCounts);
+        strcat(stashAddress, stashCountString);
+        mkdir(stashAddress , 0777);
+
+        //copy everything from root to new stash folder except .niggit folder
+        char commandForFindAllFilesInRoot[1000] = "find ";
+        char rootAddress[1000] = "";
+        FILE* rootAddressTxt = popen("pwd" , "r");
+        fgets(rootAddress , sizeof(rootAddress) , rootAddressTxt);
+        rootAddress[strcspn(rootAddress , "\n")] = '\0';
+        strcat(commandForFindAllFilesInRoot , rootAddress);
+        strcat(commandForFindAllFilesInRoot , " 2> .niggit/error.log");
+        FILE* tempForFindAllFilesInRoot = popen(commandForFindAllFilesInRoot , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tempForFindAllFilesInRoot) != NULL)
+        {
+            line[strcspn(line , "\n")] = '\0';
+            if (!strcmp(line , rootAddress))
+            {
+                continue;
+            }
+            
+            // skips if we are cping a file inside another folder
+            int slashCount = 0;
+            for (size_t i = 0; i < strlen(line); i++)
+            {
+                if (line[i] == '/')
+                {
+                    slashCount++;
+                }
+            }
+            int slashCountRoot = 0;
+            for (size_t i = 0; i < strlen(rootAddress); i++)
+            {
+                if (rootAddress[i] == '/')
+                {
+                    slashCountRoot++;
+                }
+            }
+            if (slashCount > slashCountRoot + 1)
+            {
+                continue;
+            }
+            // finds out if we are cping a file or a folder
+            int hasDot = 0;
+            for (size_t i = 0; i < strlen(line); i++)
+            {
+                if (line[i] == '.')
+                {
+                    hasDot = 1;
+                    break;
+                }
+            }
+            
+            if (!hasDot)
+            {
+                if (strstr(line , ".niggit") == NULL)
+                {
+                    char commandForCopy[1000] = "cp -r \"";
+                    strcat(commandForCopy , line);
+                    strcat(commandForCopy , "\" \"");
+                    strcat(commandForCopy , stashAddress);
+                    strcat(commandForCopy , "\" 2> .niggit/error.log");
+                    system(commandForCopy);
+                }
+            }
+            else
+            {
+                if (strstr(line , ".niggit") == NULL)
+                {
+                    char commandForCopy[1000] = "cp \"";
+                    strcat(commandForCopy , line);
+                    strcat(commandForCopy , "\" \"");
+                    strcat(commandForCopy , stashAddress);
+                    strcat(commandForCopy , "\" 2> .niggit/error.log");
+                    system(commandForCopy);
+                }
+            }
+            
+
+        }
+        
+        //get the current commit address 
+        char currentCommitAddress[1000] = "";
+        FILE* currentCommitTxt = fopen(currentCommit , "r");
+        if (currentCommitTxt == NULL)
+        {
+            printf("BRUH you don't have any commits :/\n");
+            return;
+        }
+        char line2[1000];
+        fgets(line2 , sizeof(line2) , currentCommitTxt);
+        line2[strcspn(line2 , "\n")] = '\0';
+        strcat(currentCommitAddress , line2);
+        fclose(currentCommitTxt);
+
+        // add stash name message and address to stash list
+        FILE* stashListTxt = fopen(stashList , "a");
+        fprintf(stashListTxt , "%s-%s-%s-%s\n" , stashCountString , message , stashAddress , currentCommitAddress);
+        fclose(stashListTxt);
+
+        //set stash as the latest stash
+        FILE* latestStashTxt = fopen(stashLatest , "w");
+        fprintf(latestStashTxt , "%s-%s-%s-%s\n" , stashCountString , message , stashAddress , currentCommitAddress);
+        fclose(latestStashTxt);
+
+        //increase stash count
+        stashCountTxt = fopen(stashCount , "w");
+        fprintf(stashCountTxt , "%d" , stashCounts + 1);
+
+        //checkout to head
+        char commandForCheckout[1000] = "niggit checkout HEAD";
+        system(commandForCheckout);
+
+        //print successful
+        printf("you just pushed your stash !\n");
     }
     
 }
 void Debug(char **argv)
 {
-    char command[1000] = "ls -l 2.txt";
-    FILE* tmp = popen(command , "r");
-    char permission[1000];
-    fgets(permission , 11 , tmp);
-    printf("%s" , permission);
+    char tmp[1000] = RED"hello"RESET;
+    printf("%s\n" , tmp);
 }
 void CommandFinder(char **argv)
 {
@@ -4916,6 +5377,10 @@ void CommandFinder(char **argv)
     else if (!strcmp(argv[1] , "diff"))
     {
         Diff(argv);
+    }
+    else if (!strcmp(argv[1] , "stash"))
+    {
+        Stash(argv);
     }
     else if (!strcmp(argv[1] , "debug"))
     {
