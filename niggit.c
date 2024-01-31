@@ -2581,7 +2581,7 @@ int Alias(char **argv)
     }
     return 0;
 }
-void CheckOut(char **argv)
+char* CheckOut(char **argv)
 {
     //checkout commit
     if (strstr(argv[2] , "#") != NULL)
@@ -2862,12 +2862,14 @@ void CheckOut(char **argv)
         }
 
         char commitId[1000];
+        char commitMessages[1000];
         commitList = fopen(addressOfCommitList , "r");
-        for (size_t i = 0; i < n; i++)
+        for (size_t i = 0; i < count - n; i++)
         {
             char commitId1[1000] , commitMessage[1000] , commitTime[1000] , commitBranch[1000] , commitUsername[1000] , commitFileCount[1000] , commitEmail[1000];
             fscanf(commitList , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId1 , commitMessage , commitTime , commitBranch , commitUsername , commitEmail , commitFileCount );
             strcpy(commitId , commitId1);
+            strcpy(commitMessages , commitMessage);
         }
         fclose(commitList);
 
@@ -2950,6 +2952,10 @@ void CheckOut(char **argv)
 
         //print success
         printf("you just checked out to %d commits before HEAD (commiting is disabled) !\n" , n);
+        
+        char *message = malloc(sizeof(char) * 1000);
+        strcpy(message , commitMessages);
+        return message;
     }
     //checkout branch
     else
@@ -4617,7 +4623,7 @@ void Revert(char **argv)
         return;
     }
     // check for flags
-    int doesHaveM = 0 , doesHaveE = 0;
+    int doesHaveM = 0 , doesHaveHEAD = 0 , doesHaveN = 0;
     int indForArgv = 2;
     while (argv[indForArgv] != NULL)
     {
@@ -4625,15 +4631,353 @@ void Revert(char **argv)
         {
             doesHaveM = 1;
         }
-        else if (!strcmp(argv[indForArgv] , "-e"))
+        if (strstr(argv[indForArgv] , "HEAD"))
         {
-            doesHaveE = 1;
+            doesHaveHEAD = 1;
         }
+        if (!strcmp(argv[indForArgv] , "-n"))
+        {
+            doesHaveN = 1;
+        }
+
         indForArgv++;
     }
     //normal revert
+    if (!doesHaveHEAD && !doesHaveN)
+    {
+        char commitId[1000] = "";
+        char commitAddress[1000] = "";
+        char commitMessage[1000] = "";
+        char commitBranchName[1000] = "";
+        //check for commit message
+        if(!strcmp(argv[2] , "-m"))
+        {
+            strcat(commitMessage , argv[3]);
+            strcat(commitId , argv[4]);
+            FILE* globalCommitListTxt = fopen(globalCommitList , "r");
+            char line[1000];
+            while (fgets(line , sizeof(line) , globalCommitListTxt) != NULL)
+            {
+                char commitId2[1000] , commitBranch[1000] , commitMessage2[1000] , commitTime[1000] , commitAuthor[1000] , commitEmail[1000] , commitFiles[1000];
+                sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId2  , commitMessage2 , commitTime , commitBranch , commitAuthor , commitEmail , commitFiles);
+                if (!strcmp(commitId2 , commitId))
+                {
+                    strcat(commitBranchName , commitBranch);
+                    break;
+                }
+            }
+        }
+        else
+        {
+            strcat(commitId , argv[2]);
+            FILE* globalCommitListTxt = fopen(globalCommitList , "r");
+            char line[1000];
+            while (fgets(line , sizeof(line) , globalCommitListTxt) != NULL)
+            {
+                char commitId2[1000] , commitBranch[1000] , commitMessage2[1000] , commitTime[1000] , commitAuthor[1000] , commitEmail[1000] , commitFiles[1000];
+                sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId2  , commitMessage2 , commitTime , commitBranch , commitAuthor , commitEmail , commitFiles);
+                if (!strcmp(commitId2 , commitId))
+                {
+                    strcpy(commitMessage , commitMessage2);
+                    strcpy(commitBranchName , commitBranch);
+                    break;
+                }
+            }
+        }
+    
+        // finds the address of branch
+        char branchAddress[1000] = "";
+        FILE* branchesTxt = fopen(branchesTextFile , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , branchesTxt) != NULL)
+        {
+            char branchName[1000] , branchAddress2[1000];
+            sscanf(line , "%[^-]%*c%[^\n]%*c" , branchName , branchAddress2);
+            if (!strcmp(branchName , commitBranchName))
+            {
+                strcpy(branchAddress , branchAddress2);
+                break;
+            }
+        }
+        fclose(branchesTxt);
 
+        //finds the address of commit
+        strcat(commitAddress , branchAddress);
+        strcat(commitAddress , "/.commits/");
+        strcat(commitAddress , commitId);
 
+        // delete every file and folder in root
+        char rootAddress[1000] = "";
+        FILE* temp = popen("pwd" , "r");
+        fgets(rootAddress , sizeof(rootAddress) , temp);
+
+        char commandForDelete[1000] = "find ";
+        strcat(commandForDelete , rootAddress);
+        strcat(commandForDelete , " 2> .niggit/error.log");
+
+        FILE* tempForDelete = popen(commandForDelete , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , tempForDelete) != NULL)
+        {
+            if (!strcmp(line2 , rootAddress))
+            {
+                continue;
+            }
+            if (strstr(line2 , ".niggit") == NULL)
+            {
+                line2[strlen(line2) - 1] = '\0';
+                char commandForDelete2[1000] = "rm -r \"";
+                strcat(commandForDelete2 , line2);
+                strcat(commandForDelete2 , "\" 2> .niggit/error.log");
+                system(commandForDelete2);
+            }
+        }
+
+        //copy the files from commit address to root
+        char commandForFind[1000] = "find \"";
+        strcat(commandForFind, commitAddress);
+        strcat(commandForFind , "\"");
+        strcat(commandForFind , " -maxdepth 1 2> .niggit/error.log");
+
+        rootAddress[strlen(rootAddress) - 1] = '\0';
+        FILE* tempForFind = popen(commandForFind , "r");
+        char line3[1000];
+        while (fgets(line3 , sizeof(line3) , tempForFind) != NULL)
+        {
+            line3[strlen(line3) - 1] = '\0';
+            if (!strcmp(line3 , commitAddress))
+            {
+                continue;
+            }
+            
+            if (strstr(line3 + strlen(commitAddress) - 1 , "branch-") == NULL)
+            {
+                char commandForCopy[1000] = "cp -r \"";
+                strcat(commandForCopy , line3);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , rootAddress);
+                strcat(commandForCopy , "/\"");
+                strcat(commandForCopy , " 2> .niggit/error.log");
+                system(commandForCopy);
+            }
+        }
+
+        //stage everything in root
+        char commandForStage[1000] = "find . ";
+        strcat(commandForStage , " -type f 2> .niggit/error.log");
+        FILE* tempForStage = popen(commandForStage , "r");
+        char line4[1000];
+        while (fgets(line4 , sizeof(line4) , tempForStage) != NULL)
+        {
+            line4[strlen(line4) - 1] = '\0';
+            //printf("%s\n" , line4);
+            if (strstr(line4 , ".niggit") == NULL)
+            {
+                char commandForStage2[1000] = "niggit add \"";
+                strcat(commandForStage2 , line4 + 2);
+                strcat(commandForStage2 , "\"");
+                system(commandForStage2);
+            }
+        }
+        fclose(tempForStage);
+        //commit the files
+        char commandForCommit[1000] = "niggit commit -m \"";
+        strcat(commandForCommit , commitMessage);
+        strcat(commandForCommit , "\"");
+        system(commandForCommit);
+
+        //print successful
+        printf("you just reverted to the commit : %s\n" , commitId);
+    }
+    //revert -n
+    else if (!doesHaveHEAD && doesHaveN && !doesHaveM)
+    {
+        //check if we have commit id
+        char commitId[1000] = "";
+        char commitAddress[1000] = "";
+        char brancAdd [1000] = "";
+        if (argv[3] != NULL)
+        {
+            strcat(commitId , argv[3]);
+
+            //finds the branch name from global commit list
+            char branchName[1000] = "";
+            FILE* globalCommitListTxt = fopen(globalCommitList , "r");
+            char line[1000];
+            while (fgets(line , sizeof(line) , globalCommitListTxt) != NULL)
+            {
+                char commitId2[1000] , commitBranch[1000] , commitMessage[1000] , commitTime[1000] , commitAuthor[1000] , commitEmail[1000] , commitFiles[1000];
+                sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId2  , commitMessage , commitTime , commitBranch , commitAuthor , commitEmail , commitFiles);
+                if (!strcmp(commitId2 , commitId))
+                {
+                    strcpy(branchName , commitBranch);
+                    break;
+                }
+            }
+        
+            //finds the address of branch from branches.txt
+            FILE* branchesTxt = fopen(branchesTextFile , "r");
+            while (fgets(line , sizeof(line) , branchesTxt) != NULL)
+            {
+                char branchName2[1000] , branchAddress[1000];
+                sscanf(line , "%[^-]%*c%[^\n]%*c" , branchName2 , branchAddress);
+                if (!strcmp(branchName2 , branchName))
+                {
+                    branchAddress[strcspn(branchAddress , "\n")] = '\0';
+                    strcpy(brancAdd , branchAddress);
+                    break;
+                }
+            }     
+            fclose(branchesTxt);
+
+            //finds the address of commit from branch
+            strcat(commitAddress , brancAdd);
+            strcat(commitAddress , "/.commits/");
+            strcat(commitAddress , commitId);
+        }
+        else
+        {
+            //finds the last commit address from last commit text
+            FILE* lastCommitTxt = fopen(theLatestCommit , "r");
+            fgets(commitAddress , sizeof(commitAddress) , lastCommitTxt);
+            fclose(lastCommitTxt);
+        }
+    
+        // delete every file and folder in root
+        char rootAddress[1000] = "";
+        FILE* temp = popen("pwd" , "r");
+        fgets(rootAddress , sizeof(rootAddress) , temp);
+
+        char commandForDelete[1000] = "find ";
+        strcat(commandForDelete , rootAddress);
+        strcat(commandForDelete , " 2> .niggit/error.log");
+
+        FILE* tempForDelete = popen(commandForDelete , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tempForDelete) != NULL)
+        {
+            if (!strcmp(line , rootAddress))
+            {
+                continue;
+            }
+            if (strstr(line , ".niggit") == NULL)
+            {
+                line[strlen(line) - 1] = '\0';
+                char commandForDelete2[1000] = "rm -r \"";
+                strcat(commandForDelete2 , line);
+                strcat(commandForDelete2 , "\" 2> .niggit/error.log");
+                system(commandForDelete2);
+            }
+        }
+
+        //copy the files from commit address to root
+        char commandForFind[1000] = "find \"";
+        strcat(commandForFind, commitAddress);
+        strcat(commandForFind , "\"");
+        strcat(commandForFind , " -maxdepth 1 2> .niggit/error.log");
+
+        rootAddress[strlen(rootAddress) - 1] = '\0';
+        FILE* tempForFind = popen(commandForFind , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , tempForFind) != NULL)
+        {
+            line2[strlen(line2) - 1] = '\0';
+            if (!strcmp(line2 , commitAddress))
+            {
+                continue;
+            }
+            
+            if (strstr(line2 + strlen(commitAddress) - 1 , "branch-") == NULL)
+            {
+                char commandForCopy[1000] = "cp -r \"";
+                strcat(commandForCopy , line2);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , rootAddress);
+                strcat(commandForCopy , "/\"");
+                strcat(commandForCopy , " 2> .niggit/error.log");
+                system(commandForCopy);
+            }
+        }
+
+        //print successful
+        printf("you just reverted to the commit : %s\n" , commitId);
+
+    }
+    //revert HEAD
+    else if (doesHaveHEAD && !doesHaveN)
+    {
+        char x[1000] = "";
+        char commitMessage[1000] = "";
+        char commitId[1000] = "";
+        if (doesHaveM)
+        {
+             strcat(x , argv[4] + 5); 
+        }
+        else
+        {
+            strcat(x , argv[2] + 5);          
+        }
+        
+        //checkout to head-x
+        char **commanfForCheckout = (char**)malloc(3 * sizeof(char*));
+        for (size_t i = 0; i < 3; i++)
+        {
+            commanfForCheckout[i] = (char*)malloc(1000 * sizeof(char));
+        }
+        strcpy(commanfForCheckout[0] , "niggit");
+        strcat(commanfForCheckout[1] , "checkout");
+        strcat(commanfForCheckout[2] , "HEAD-");
+        strcat(commanfForCheckout[2] , x);
+
+        char* newMessage = CheckOut(commanfForCheckout);
+
+        printf("%s\n" , newMessage);
+        if(doesHaveM)
+        {
+            strcat(commitMessage , argv[3]);
+        }
+        else
+        {
+            strcat(commitMessage , newMessage);
+        }
+
+        //stage everything in root
+        char commandForStage[1000] = "find . ";
+        strcat(commandForStage , " -type f 2> .niggit/error.log");
+        FILE* tempForStage = popen(commandForStage , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tempForStage) != NULL)
+        {
+            line[strlen(line) - 1] = '\0';
+            //printf("%s\n" , line);
+            if (strstr(line , ".niggit") == NULL)
+            {
+                char commandForStage2[1000] = "niggit add \"";
+                strcat(commandForStage2 , line + 2);
+                strcat(commandForStage2 , "\"");
+                system(commandForStage2);
+            }
+        }
+        fclose(tempForStage);
+
+        //enable commiting
+        FILE* canCommiting = fopen(canCommit , "w");
+        fprintf(canCommiting , "1");
+        fclose(canCommiting);
+        //enable commitng hook
+        FILE* canCommitHookFile = fopen(canCommitHookTxt , "w");
+        fprintf(canCommitHookFile , "1");
+        fclose(canCommitHookFile);
+
+        //commit the files
+        char commandForCommit[1000] = "niggit commit -m \"";
+        strcat(commandForCommit , commitMessage);
+        strcat(commandForCommit , "\"");
+        system(commandForCommit);
+
+        //print successful
+        printf(BOLDMAGENTA"you just reverted to %s commits before head\n"RESET , x);
+    }
 }
 void DiffFounder(char fileAddress11[1000] , char fileAddress21[1000] , int line1Begin , int line1End , int line2Begin , int line2End)
 {
@@ -5145,92 +5489,7 @@ void Stash(char **argv)
         }
 
         //copy the everything from stash folder into root
-        char root[1000] = "";
-        FILE* rootTemp = popen("pwd" , "r");
-        fgets(root , sizeof(root) , rootTemp);
-        root[strcspn(root , "\n")] = '\0';
-        fclose(rootTemp);
-
-        char commandForFindAllStashFolders[1000] = "find ";
-        strcat(commandForFindAllStashFolders , stashRepo);
-        strcat(commandForFindAllStashFolders , " -type d 2> .niggit/error.log");
-        FILE* tempForFindAllStashFolders = popen(commandForFindAllStashFolders , "r");
-        char line[1000];
-        int ind = 0;
-        while (fgets(line , sizeof(line) , tempForFindAllStashFolders) != NULL)
-        {
-            line[strcspn(line , "\n")] = '\0';
-            if (!strcmp(line , stashRepo))
-            {
-                continue;
-            }
-            if (ind + 1 == index)
-            {
-                char commandForCopy[1000] = "cp -r \"";
-                strcat(commandForCopy , line);
-                strcat(commandForCopy , "\" \"");
-                strcat(commandForCopy , root);
-                strcat(commandForCopy , "\"");
-                strcat(commandForCopy , " 2> .niggit/error.log");
-                system(commandForCopy);
-                break;
-            }
-            ind++;
-        }
-
-        //delete the stash folder
-        char commandForFindAllStashFolders2[1000] = "find ";
-        strcat(commandForFindAllStashFolders2 , stashRepo);
-        strcat(commandForFindAllStashFolders2 , " -type d 2> .niggit/error.log");
-        FILE* tempForFindAllStashFolders2 = popen(commandForFindAllStashFolders2 , "r");
-        char line2[1000];
-        ind = 0;
-        while (fgets(line2 , sizeof(line2) , tempForFindAllStashFolders2) != NULL)
-        {
-            line2[strcspn(line2 , "\n")] = '\0';
-            if (!strcmp(line2 , stashRepo))
-            {
-                continue;
-            }
-            if (ind + 1 == index)
-            {
-                char commandForDelete[1000] = "rm -r \"";
-                strcat(commandForDelete , line2);
-                strcat(commandForDelete , "\"");
-                strcat(commandForDelete , " 2> .niggit/error.log");
-                system(commandForDelete);
-                break;
-            }
-            ind++;
-        }
-        fclose(tempForFindAllStashFolders2);
-
-        //delete the stash from stash list
-        FILE* stashListTxt2 = fopen(stashList , "r");
-        FILE* tempStashListTxt = fopen(tempStashList , "w");
-        char line3[1000];
-        ind = 0;
-        while (fgets(line3 , sizeof(line3) , stashListTxt2) != NULL)
-        {
-            line3[strcspn(line3 , "\n")] = '\0';
-            if (ind == index)
-            {
-                ind++;
-                continue;
-            }
-            fprintf(tempStashListTxt , "%s\n" , line3);
-            ind++;
-        }
-        fclose(stashListTxt2);
-        fclose(tempStashListTxt);
-        remove(stashList);
-        rename(tempStashList , stashList);
-
-        //delete the stash from stash count
-        stashCountTxt = fopen(stashCount , "w");
-        fprintf(stashCountTxt , "%d" , stashCounts - 1);
-        fclose(stashCountTxt);
-
+        
         //print successful
         printf("you just popped the stash !\n");
     }
@@ -5273,7 +5532,6 @@ void Stash(char **argv)
         char stashIndex [1000];
         while (fgets(line2 , sizeof(line2) , stashListTxt2) != NULL)
         {
-            printf("%s\n" , line2);
             if (ind == index)
             {
                 ind++;
