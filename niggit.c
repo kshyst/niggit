@@ -25,6 +25,8 @@
 #define headAddress ".niggit/branches/head.txt"
 #define theLatestCommit ".niggit/branches/latest-commit.txt"
 #define currentCommit ".niggit/branches/current-commit.txt"
+//merge
+#define mergedsAddress ".niggit/branches/mergedBranches"
 //configs
 #define globalSettingAddress "/home/kshyst/.niggit-settings"
 #define localSettingAddress ".niggit/configs"
@@ -83,6 +85,7 @@ Hook* head = NULL;
 int canCommitHook = 1;
 //Function Prototypes
 void CommandFinder(char **argv);
+int DiffFounder(char fileAddress11[1000] , char fileAddress21[1000] , int line1Begin , int line1End , int line2Begin , int line2End , int mode);
 char* GetTime();
 int main(int argc, char **argv)
 {
@@ -3156,7 +3159,446 @@ char* CheckOut(char **argv)
 }
 void Merge(char **argv)
 {
+    char branchName1[1000] = "";
+    char branchName2[1000] = "";
+    char branchAddress1[1000] = "";
+    char branchAddress2[1000] = "";
 
+    strcat(branchName1 , argv[3]);
+    strcat(branchName2 , argv[4]);
+
+    //find branches addresses
+
+    FILE* branchesTxtFile = fopen(branchesTextFile , "r");
+    char bNames[1000];
+    int isBranch1Found = 0;
+    int isBranch2Found = 0;
+    while (fgets(bNames , sizeof(bNames) , branchesTxtFile))
+    {
+        char name[1000] , address[1000];
+        sscanf(bNames , "%[^-]%*c%[^\n]%*c" , name , address );
+        if (!strcmp(branchName1 , name))
+        {
+            strcat(branchAddress1 , address);
+            isBranch1Found = 1;
+        }
+        if (!strcmp(branchName2 , name))
+        {
+            strcat(branchAddress2 , address);
+            isBranch2Found = 1;
+        }
+    }
+    fclose(branchesTxtFile);
+
+    if (!isBranch1Found)
+    {
+        printf("BRUH this branch doesn't exists :/\n");
+        return;
+    }
+    if (!isBranch2Found)
+    {
+        printf("BRUH this branch doesn't exists :/\n");
+        return;
+    }
+
+    //find the latest commit of the branches
+
+    char latestCommitOfBranch1[1000] = "";
+    char latestCommitOfBranch2[1000] = "";
+    char txtAddress1[1000] = "";
+    char txtAddress2[1000] = "";
+    strcat(txtAddress1 , branchAddress1);
+    strcat(txtAddress1 , "/latest-commit.txt");
+    strcat(txtAddress2 , branchAddress2);
+    strcat(txtAddress2 , "/latest-commit.txt");
+    FILE* latestCommitsTxt1 = fopen(txtAddress1 , "r");
+    FILE* latestCommitsTxt2 = fopen(txtAddress2 , "r");
+    fgets(latestCommitOfBranch1 , sizeof(latestCommitOfBranch1) , latestCommitsTxt1);
+    fgets(latestCommitOfBranch2 , sizeof(latestCommitOfBranch2) , latestCommitsTxt2);
+    fclose(latestCommitsTxt1);
+    fclose(latestCommitsTxt2);
+
+    if (latestCommitOfBranch1[strlen(latestCommitOfBranch1) - 1] == '\n')
+    {
+        latestCommitOfBranch1[strlen(latestCommitOfBranch1) - 1] = '\0';
+    }
+    if (latestCommitOfBranch2[strlen(latestCommitOfBranch2) - 1] == '\n')
+    {
+        latestCommitOfBranch2[strlen(latestCommitOfBranch2) - 1] = '\0';
+    }
+    
+    // checks for conflicts
+    char commandForFindAllFilesInLatestCommitOfBranch11[1000] = "find \"";
+    strcat(commandForFindAllFilesInLatestCommitOfBranch11 , latestCommitOfBranch1);
+    strcat(commandForFindAllFilesInLatestCommitOfBranch11 , "\" -type f 2> .niggit/error.log");
+
+    char commandForFindAllFilesInLatestCommitOfBranch21[1000] = "find \"";
+    strcat(commandForFindAllFilesInLatestCommitOfBranch21 , latestCommitOfBranch2);
+    strcat(commandForFindAllFilesInLatestCommitOfBranch21 , "\" -type f 2> .niggit/error.log");
+
+    FILE* tempForFind11 = popen(commandForFindAllFilesInLatestCommitOfBranch11 , "r");
+    char line11[1000];
+    while (fgets(line11 , sizeof(line11) , tempForFind11) != NULL)
+    {
+        line11[strlen(line11) - 1] = '\0';
+        FILE* tempForFind2 = popen(commandForFindAllFilesInLatestCommitOfBranch21 , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , tempForFind2) != NULL)
+        {
+            line2[strlen(line2) - 1] = '\0';
+            if (!strcmp(line11 + strlen(latestCommitOfBranch1) + 1 , line2 + strlen(latestCommitOfBranch2) + 1))
+            {
+                int resultOfConflict = DiffFounder(line11 , line2 , 1 , 10000000 , 1 , 10000000 , 1);
+                if (resultOfConflict)
+                {
+                    printf("there is a conflict; merging failed :p \n");
+                    return;
+                }
+            }
+        }
+    }
+
+    // create the new branch
+    if(!opendir(mergedsAddress))
+    {
+        mkdir(mergedsAddress , 0777);
+    }
+
+    char newBranchAddress[1000] = "";
+    strcat(newBranchAddress , mergedsAddress);
+    strcat(newBranchAddress , "/branch-");
+    strcat(newBranchAddress , branchName1);
+    strcat(newBranchAddress , "=");
+    strcat(newBranchAddress , branchName2);
+    mkdir(newBranchAddress , 0777);
+
+    //create commits folder for branchh
+    char newBranchCommitsAddress[1000] = "";
+    strcat(newBranchCommitsAddress , newBranchAddress);
+    strcat(newBranchCommitsAddress , "/.commits");
+    mkdir(newBranchCommitsAddress , 0777);
+
+    // create the new branch's latest commit
+    char newBranchLatestCommitAddress[1000] = "";
+    strcat(newBranchLatestCommitAddress , newBranchAddress);
+    strcat(newBranchLatestCommitAddress , "/latest-commit.txt");
+    FILE* newBranchLatestCommitTxt = fopen(newBranchLatestCommitAddress , "w");
+    fclose(newBranchLatestCommitTxt);
+
+    // create the new branch's commit list
+    char newBranchCommitListAddress[1000] = "";
+    strcat(newBranchCommitListAddress , newBranchAddress);
+    strcat(newBranchCommitListAddress , "/commit-list.txt");
+    FILE* newBranchCommitListTxt = fopen(newBranchCommitListAddress , "w");
+    fclose(newBranchCommitListTxt);
+
+    // create the new commit for merged branch
+    char newCommitAddress[1000] = "";
+    strcat(newCommitAddress , newBranchAddress);
+    strcat(newCommitAddress , "/.commits/");
+    strcat(newCommitAddress , "#merged");
+    mkdir(newCommitAddress , 0777);
+
+    // create the new commit's info
+    char newCommitMessage[1000] = "no message";
+    char newCommitTime[1000] = "";
+    char newCommitBranch[1000] = "";
+    char newCommitUsername[1000] = "";
+    char newCommitEmail[1000] = "";
+    char newCommitFileCount[1000] = "0";
+
+    strcat(newCommitTime , GetTime());
+
+    strcat(newCommitBranch , branchName1);
+    strcat(newCommitBranch , "=");
+    strcat(newCommitBranch , branchName2);
+
+    //get local username and global username
+    char localUserNameString[1000] = "";
+    char globalUserNameString[1000] = "";
+    
+    FILE *fp3 = fopen(localUserName , "r");
+    if (fp3 == NULL)
+    {
+        FILE *fp4 = fopen(globalUserName , "r");
+        fgets(globalUserNameString , sizeof(globalUserNameString) , fp4);
+        fclose(fp4);
+    }
+    else
+    {
+        fgets(localUserNameString , sizeof(localUserNameString) , fp3);
+        fclose(fp3);
+    }
+
+    char commitUsername[1000] = "";
+    if (localUserNameString[0] != '\0')
+    {
+        strcat(commitUsername , localUserNameString);
+    }
+    else if (globalUserNameString[0] != '\0')
+    {
+        strcat(commitUsername , globalUserNameString);
+    }
+    else
+    {
+        printf("BRUH you didn't set your username :/\n");
+        return;
+    }
+
+    //get global and local user email
+    char localUserEmailString[1000] = "";
+    char globalUserEmailString[1000] = "";
+
+    FILE *fp4 = fopen(localUserEmail , "r");
+    if (fp4 == NULL)
+    {
+        FILE *fp5 = fopen(globalUserEmail , "r");
+        fgets(globalUserEmailString , sizeof(globalUserEmailString) , fp5);
+        fclose(fp5);
+    }
+    else
+    {
+        fgets(localUserEmailString , sizeof(localUserEmailString) , fp4);
+        fclose(fp4);
+    }
+
+    char commitEmail[1000] = "";
+    if (localUserEmailString[0] != '\0')
+    {
+        strcat(commitEmail , localUserEmailString);
+    }
+    else if (globalUserEmailString[0] != '\0')
+    {
+        strcat(commitEmail , globalUserEmailString);
+    }
+    else
+    {
+        printf("BRUH you didn't set your email :/\n");
+        return;
+    }
+
+    strcat(newCommitUsername , commitUsername);
+    strcat(newCommitEmail , commitEmail);
+
+    //create new branch name
+    char newBranchName[1000] = "";
+    strcat(newBranchName , branchName1);
+    strcat(newBranchName , "=");
+    strcat(newBranchName , branchName2);
+
+    // add info to the global commit list
+    FILE* globalCommitListTxt = fopen(globalCommitList , "a");
+    fprintf(globalCommitListTxt , "%s-%s-%s-%s-%s-%s-%s\n" , "#merged" , newCommitMessage , newCommitTime  , newCommitBranch  , newCommitUsername , newCommitEmail , newCommitFileCount);
+    fclose(globalCommitListTxt);
+
+    //add info to local commit list
+    FILE* localCommitListTxt = fopen(newBranchCommitListAddress , "a");
+    fprintf(localCommitListTxt , "%s-%s-%s-%s-%s-%s-%s\n" , "#merged" , newCommitMessage , newCommitTime ,newCommitBranch  , newCommitUsername , newCommitEmail , newCommitFileCount);
+
+    // add info to global latest commit
+    FILE* globalLatestCommitTxt = fopen(theLatestCommit , "w");
+    fprintf(globalLatestCommitTxt , "%s" , newCommitAddress);
+    fclose(globalLatestCommitTxt);
+
+    // add info to local latest commit
+    FILE* localLatestCommitTxt = fopen(newBranchLatestCommitAddress , "w");
+    fprintf(localLatestCommitTxt , "%s" , newCommitAddress);
+    fclose(localLatestCommitTxt);
+
+    //change the head
+    FILE* headTxt = fopen(headAddress , "w");
+    fprintf(headTxt , "%s" , newCommitAddress);
+    fclose(headTxt);
+
+    //change current branch name text file
+    FILE* currentBranchTxt = fopen(currentBranchName , "w");
+    fprintf(currentBranchTxt , "%s" , newBranchName);
+    fclose(currentBranchTxt);
+
+    //change current branch address text file
+    FILE* currentBranchAddressTxt = fopen(currentBranchTextFile , "w");
+    fprintf(currentBranchAddressTxt , "%s" , newBranchAddress);
+    fclose(currentBranchAddressTxt);
+
+    //add branch to branches
+    FILE* branchesTxt = fopen(branchesTextFile , "a");
+    fprintf(branchesTxt , "%s-%s\n" , newBranchName , newBranchAddress);
+    fclose(branchesTxt);
+
+    //add 1 to commit count
+    FILE* commitCountTxt = fopen(totalCommitCount , "r");
+    char count[1000];
+    fgets(count , sizeof(count) , commitCountTxt);
+    fclose(commitCountTxt);
+
+    int countInt = atoi(count);
+    countInt++;
+    char countString[1000] = "";
+    sprintf(countString , "%d" , countInt);
+
+    FILE* commitCountTxt2 = fopen(totalCommitCount , "w");
+    fprintf(commitCountTxt2 , "%s" , countString);
+    fclose(commitCountTxt2);
+
+    //change current commit
+    FILE* currentCommitTxt = fopen(currentCommit , "w");
+    fprintf(currentCommitTxt , "%s" , newCommitAddress);
+    fclose(currentCommitTxt);
+
+    //copy every file from head1 and head2 to the new commit
+    char commandForFindAllFilesInLatestCommitOfBranch1[1000] = "find \"";
+    strcat(commandForFindAllFilesInLatestCommitOfBranch1 , latestCommitOfBranch1);
+    strcat(commandForFindAllFilesInLatestCommitOfBranch1 , "\" 2> .niggit/error.log");
+
+    char commandForFindAllFilesInLatestCommitOfBranch2[1000] = "find \"";
+    strcat(commandForFindAllFilesInLatestCommitOfBranch2 , latestCommitOfBranch2);
+    strcat(commandForFindAllFilesInLatestCommitOfBranch2 , "\" 2> .niggit/error.log");
+
+    FILE* tempForFind1 = popen(commandForFindAllFilesInLatestCommitOfBranch1 , "r");
+    char line1[1000];
+    while (fgets(line1 , sizeof(line1) , tempForFind1) != NULL)
+    {
+        line1[strlen(line1) - 1] = '\0';
+        
+        //skip if its the root of commit
+        if (!strcmp(line1 , latestCommitOfBranch1))
+        {
+            continue;
+        }
+
+        // skips if we are cping a file inside another folder
+        int slashCount = 0;
+        for (size_t i = 0; i < strlen(line1); i++)
+        {
+            if (line1[i] == '/')
+            {
+                slashCount++;
+            }
+        }
+        int slashCountRoot = 0;
+        for (size_t i = 0; i < strlen(latestCommitOfBranch1); i++)
+        {
+            if (latestCommitOfBranch1[i] == '/')
+            {
+                slashCountRoot++;
+            }
+        }
+        if (slashCount > slashCountRoot + 1)
+        {
+            continue;
+        }
+        // finds out if we are cping a file or a folder
+        int hasDot = 0;
+        for (size_t i = 0; i < strlen(line1); i++)
+        {
+            if (line1[i] == '.')
+            {
+                hasDot = 1;
+                break;
+            }
+        }
+        
+        if (!hasDot)
+        {
+            if (strstr(line1 , ".niggit") == NULL)
+            {
+                char commandForCopy[1000] = "cp -r \"";
+                strcat(commandForCopy , line1);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , newCommitAddress);
+                strcat(commandForCopy , "\" 2> .niggit/error.log");
+                system(commandForCopy);
+            }
+        }
+        else
+        {
+            if (strstr(line1 , ".niggit") == NULL)
+            {
+                char commandForCopy[1000] = "cp \"";
+                strcat(commandForCopy , line1);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , newCommitAddress);
+                strcat(commandForCopy , "\" 2> .niggit/error.log");
+                system(commandForCopy);
+            }
+        }
+    }
+
+    FILE* tempForFind2 = popen(commandForFindAllFilesInLatestCommitOfBranch2 , "r");
+    char line2[1000];
+    while (fgets(line2 , sizeof(line2) , tempForFind2) != NULL)
+    {
+        line2[strlen(line2) - 1] = '\0';
+        
+        //skip if its the root of commit
+        if (!strcmp(line2 , latestCommitOfBranch2))
+        {
+            continue;
+        }
+
+        // skips if we are cping a file inside another folder
+        int slashCount = 0;
+        for (size_t i = 0; i < strlen(line2); i++)
+        {
+            if (line2[i] == '/')
+            {
+                slashCount++;
+            }
+        }
+        int slashCountRoot = 0;
+        for (size_t i = 0; i < strlen(latestCommitOfBranch2); i++)
+        {
+            if (latestCommitOfBranch2[i] == '/')
+            {
+                slashCountRoot++;
+            }
+        }
+        if (slashCount > slashCountRoot + 1)
+        {
+            continue;
+        }
+        // finds out if we are cping a file or a folder
+        int hasDot = 0;
+        for (size_t i = 0; i < strlen(line2); i++)
+        {
+            if (line2[i] == '.')
+            {
+                hasDot = 1;
+                break;
+            }
+        }
+        
+        if (!hasDot)
+        {
+            if (strstr(line2 , ".niggit") == NULL)
+            {
+                char commandForCopy[1000] = "cp -r \"";
+                strcat(commandForCopy , line2);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , newCommitAddress);
+                strcat(commandForCopy , "\" 2> .niggit/error.log");
+                system(commandForCopy);
+            }
+        }
+        else
+        {
+            if (strstr(line2 , ".niggit") == NULL)
+            {
+                char commandForCopy[1000] = "cp \"";
+                strcat(commandForCopy , line2);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , newCommitAddress);
+                strcat(commandForCopy , "\" 2> .niggit/error.log");
+                system(commandForCopy);
+            }
+        }
+    }
+
+    fclose(tempForFind1);
+    fclose(tempForFind2);
+
+    //print successful
+    printf("you just merged %s and %s !!!!\n" , branchName1 , branchName2);
 }
 void Tag(char **argv)
 {
@@ -4979,7 +5421,7 @@ void Revert(char **argv)
         printf(BOLDMAGENTA"you just reverted to %s commits before head\n"RESET , x);
     }
 }
-void DiffFounder(char fileAddress11[1000] , char fileAddress21[1000] , int line1Begin , int line1End , int line2Begin , int line2End)
+int DiffFounder(char fileAddress11[1000] , char fileAddress21[1000] , int line1Begin , int line1End , int line2Begin , int line2End , int mode)
 {
     //get the file addresses
     char fileAddress1[1000] = "" , fileAddress2[1000] = "";
@@ -5092,10 +5534,17 @@ void DiffFounder(char fileAddress11[1000] , char fileAddress21[1000] , int line1
         }
     }
     //print if there is no equality
-    if (!didFoundInEquailty)
+    if (!didFoundInEquailty && !mode)
     {
         printf("there is no difference between these files :)\n");
+        return 0;
     }
+    else if (!didFoundInEquailty)
+    {
+        return 0;
+    }
+    
+    return 1;
 }
 void Diff(char **argv)
 {
@@ -5140,7 +5589,7 @@ void Diff(char **argv)
             endLine2 = 1000000000;
         }   
     
-        DiffFounder(fileAddress1 , fileAddress2 , beginLine1 , endLine1 , beginLine2 , endLine2);
+        DiffFounder(fileAddress1 , fileAddress2 , beginLine1 , endLine1 , beginLine2 , endLine2 , 0);
     }
     if (!strcmp(argv[2] , "-c"))
     {
@@ -5422,7 +5871,7 @@ void Diff(char **argv)
                 if (!strcmp(lineWithoutCommitAddress1 , lineWithoutCommitAddress2))
                 {
                     isFileFound = 1;
-                    DiffFounder(line4 , line2 , 1 , 1000000000 , 1 , 1000000000);
+                    DiffFounder(line4 , line2 , 1 , 1000000000 , 1 , 1000000000 , 1);
                     break;
                 }
             }
@@ -5871,7 +6320,7 @@ void Stash(char **argv)
                 if (!strcmp(line4 + strlen(line4) + 1 , line3 + strlen(line3) + 1))
                 {
                     isFileFound = 1;
-                    DiffFounder(line4 , line3 , 1 , 1000000000 , 1 , 1000000000);
+                    DiffFounder(line4 , line3 , 1 , 1000000000 , 1 , 1000000000 , 1);
                     break;
                 }
             }
