@@ -46,6 +46,7 @@
 #define stashCount ".niggit/stash/stash-count.txt"
 #define stashLatest ".niggit/stash/stash-latest.txt"
 #define stashList ".niggit/stash/stash-list.txt"
+#define tempStashList ".niggit/stash/temp-stash-list.txt"
 //colors
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
@@ -5111,8 +5112,300 @@ void Stash(char **argv)
     fscanf(stashCountTxt , "%d" , &stashCounts);
     fclose(stashCountTxt);
 
+    //stash pop
+    if (!strcmp(argv[2] , "pop"))
+    {
+        // check if stash count is 0
+        if (stashCounts <= 0)
+        {
+            printf("BRUH you don't have any stash :/\n");
+            return;
+        }
+        
+        //check if there is any stash
+        FILE* stashListTxt = fopen(stashList , "r");
+        if (stashListTxt == NULL)
+        {
+            printf("BRUH you don't have any stash :/\n");
+            return;
+        }
+        fclose(stashListTxt);
+
+        //check if the index is valid
+        int index = stashCounts - 1;
+        if (argv[3] != NULL)
+        {
+            index = atoi(argv[3]);
+            index = stashCounts - index - 1;
+            if (index < 0 || index >= stashCounts)
+            {
+                printf("BRUH this index is not valid :/\n");
+                return;
+            }
+        }
+
+        //copy the everything from stash folder into root
+        char root[1000] = "";
+        FILE* rootTemp = popen("pwd" , "r");
+        fgets(root , sizeof(root) , rootTemp);
+        root[strcspn(root , "\n")] = '\0';
+        fclose(rootTemp);
+
+        char commandForFindAllStashFolders[1000] = "find ";
+        strcat(commandForFindAllStashFolders , stashRepo);
+        strcat(commandForFindAllStashFolders , " -type d 2> .niggit/error.log");
+        FILE* tempForFindAllStashFolders = popen(commandForFindAllStashFolders , "r");
+        char line[1000];
+        int ind = 0;
+        while (fgets(line , sizeof(line) , tempForFindAllStashFolders) != NULL)
+        {
+            line[strcspn(line , "\n")] = '\0';
+            if (!strcmp(line , stashRepo))
+            {
+                continue;
+            }
+            if (ind + 1 == index)
+            {
+                char commandForCopy[1000] = "cp -r \"";
+                strcat(commandForCopy , line);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , root);
+                strcat(commandForCopy , "\"");
+                strcat(commandForCopy , " 2> .niggit/error.log");
+                system(commandForCopy);
+                break;
+            }
+            ind++;
+        }
+
+        //delete the stash folder
+        char commandForFindAllStashFolders2[1000] = "find ";
+        strcat(commandForFindAllStashFolders2 , stashRepo);
+        strcat(commandForFindAllStashFolders2 , " -type d 2> .niggit/error.log");
+        FILE* tempForFindAllStashFolders2 = popen(commandForFindAllStashFolders2 , "r");
+        char line2[1000];
+        ind = 0;
+        while (fgets(line2 , sizeof(line2) , tempForFindAllStashFolders2) != NULL)
+        {
+            line2[strcspn(line2 , "\n")] = '\0';
+            if (!strcmp(line2 , stashRepo))
+            {
+                continue;
+            }
+            if (ind + 1 == index)
+            {
+                char commandForDelete[1000] = "rm -r \"";
+                strcat(commandForDelete , line2);
+                strcat(commandForDelete , "\"");
+                strcat(commandForDelete , " 2> .niggit/error.log");
+                system(commandForDelete);
+                break;
+            }
+            ind++;
+        }
+        fclose(tempForFindAllStashFolders2);
+
+        //delete the stash from stash list
+        FILE* stashListTxt2 = fopen(stashList , "r");
+        FILE* tempStashListTxt = fopen(tempStashList , "w");
+        char line3[1000];
+        ind = 0;
+        while (fgets(line3 , sizeof(line3) , stashListTxt2) != NULL)
+        {
+            line3[strcspn(line3 , "\n")] = '\0';
+            if (ind == index)
+            {
+                ind++;
+                continue;
+            }
+            fprintf(tempStashListTxt , "%s\n" , line3);
+            ind++;
+        }
+        fclose(stashListTxt2);
+        fclose(tempStashListTxt);
+        remove(stashList);
+        rename(tempStashList , stashList);
+
+        //delete the stash from stash count
+        stashCountTxt = fopen(stashCount , "w");
+        fprintf(stashCountTxt , "%d" , stashCounts - 1);
+        fclose(stashCountTxt);
+
+        //print successful
+        printf("you just popped the stash !\n");
+    }
+    //stash drop
+    else if (!strcmp(argv[2] , "drop"))
+    {
+        // check if stash count is 0
+        if (stashCounts <= 0)
+        {
+            printf("BRUH you don't have any stash :/\n");
+            return;
+        }
+        //check if there is any stash
+        FILE* stashListTxt = fopen(stashList , "r");
+        if (stashListTxt == NULL)
+        {
+            printf("BRUH you don't have any stash :/\n");
+            return;
+        }
+        fclose(stashListTxt);
+
+        //check if the index is valid
+        int index = stashCounts - 1;
+        if (argv[3] != NULL)
+        {
+            index = atoi(argv[3]);
+            index = stashCounts - index - 1;
+            if (index < 0 || index >= stashCounts)
+            {
+                printf("BRUH this index is not valid :/\n");
+                return;
+            }
+        }
+
+        //delete the stash from stash list
+        FILE* stashListTxt2 = fopen(stashList , "r");
+        FILE* tempStashListTxt = fopen(tempStashList , "w");
+        char line2[1000];
+        int ind = 0;
+        char stashIndex [1000];
+        while (fgets(line2 , sizeof(line2) , stashListTxt2) != NULL)
+        {
+            printf("%s\n" , line2);
+            if (ind == index)
+            {
+                ind++;
+                char stashCount1[1000] , message[1000] , stashAddress[1000] , commitAddress[1000] , branchName[1000];
+                sscanf(line2 , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashCount1 , message , stashAddress , commitAddress , branchName);
+                strcpy(stashIndex , stashCount1);
+                continue;
+            }
+            fprintf(tempStashListTxt , "%s" , line2);
+            ind++;
+        }
+        fclose(stashListTxt2);
+        fclose(tempStashListTxt);
+        remove(stashList);
+        rename(tempStashList , stashList);
+
+        //delete the stash folder
+        char commandForFindAllStashFolders2[1000] = "find ";
+        strcat(commandForFindAllStashFolders2 , stashRepo);
+        strcat(commandForFindAllStashFolders2 , " -type d 2> .niggit/error.log");
+        FILE* tempForFindAllStashFolders2 = popen(commandForFindAllStashFolders2 , "r");
+        char line3[1000];
+        while (fgets(line3 , sizeof(line3) , tempForFindAllStashFolders2) != NULL)
+        {         
+            if (!strcmp(line3 , stashRepo))
+            {
+                continue;
+            }
+            char stashNumber[1000];
+            sscanf(line3 , ".niggit/stash/stash%s" , stashNumber);
+            if (!strcmp(stashNumber , stashIndex))
+            {
+                char commandForDelete[1000] = "rm -r ";
+                strcat(commandForDelete , line3);
+                strcat(commandForDelete , " 2> .niggit/error.log");
+                system(commandForDelete);
+                break;
+            }
+        }
+        fclose(tempForFindAllStashFolders2);
+
+        //delete the stash from stash count
+        stashCountTxt = fopen(stashCount , "w");
+        fprintf(stashCountTxt , "%d" , stashCounts - 1);
+        fclose(stashCountTxt);
+
+        //print successful
+        printf("you just dropped the stash !\n");
+    }
+    //stash clear
+    else if (!strcmp(argv[2] , "clear"))
+    {
+        //check if there is any stash
+        FILE* stashListTxt = fopen(stashList , "r");
+        if (stashListTxt == NULL)
+        {
+            printf("BRUH you don't have any stash :/\n");
+            return;
+        }
+        fclose(stashListTxt);
+
+        //delete all of the stash folders
+        char commandForFindAllStashFolders[1000] = "find ";
+        strcat(commandForFindAllStashFolders , stashRepo);
+        strcat(commandForFindAllStashFolders , " -type d 2> .niggit/error.log");
+        FILE* tempForFindAllStashFolders = popen(commandForFindAllStashFolders , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tempForFindAllStashFolders) != NULL)
+        {
+            line[strcspn(line , "\n")] = '\0';
+            if (!strcmp(line , stashRepo))
+            {
+                continue;
+            }
+            char commandForDelete[1000] = "rm -r ";
+            strcat(commandForDelete , line);
+            strcat(commandForDelete , " 2> .niggit/error.log");
+            system(commandForDelete);
+        }
+        fclose(tempForFindAllStashFolders);
+
+        //delete stash list
+        char commandForDeleteStashList[1000] = "rm ";
+        strcat(commandForDeleteStashList , stashList);
+        strcat(commandForDeleteStashList , " 2> .niggit/error.log");
+        system(commandForDeleteStashList);
+
+        //delete stash count
+        char commandForDeleteStashCount[1000] = "rm ";
+        strcat(commandForDeleteStashCount , stashCount);
+        strcat(commandForDeleteStashCount , " 2> .niggit/error.log");
+        system(commandForDeleteStashCount);
+
+        //delete stash latest
+        char commandForDeleteStashLatest[1000] = "rm ";
+        strcat(commandForDeleteStashLatest , stashLatest);
+        strcat(commandForDeleteStashLatest , " 2> .niggit/error.log");
+        system(commandForDeleteStashLatest);
+
+        //print successful
+        printf("you just cleared your stash !\n");
+    }
+    // stash list
+    else if (!strcmp(argv[2] , "list"))
+    {
+        //check if there is any stash
+        FILE* stashListTxt = fopen(stashList , "r");
+        if (stashListTxt == NULL)
+        {
+            printf("BRUH you don't have any stash :/\n");
+            return;
+        }
+        fclose(stashListTxt);
+
+        //print all of the stash
+        FILE* stashListTxt2 = fopen(stashList , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , stashListTxt2) != NULL)
+        {
+            line[strcspn(line , "\n")] = '\0';
+            char stashCount1[1000] , message[1000] , stashAddress[1000] , commitAddress[1000] , branchName[1000];
+            sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashCount1 , message , stashAddress , commitAddress , branchName);
+            int ind = stashCounts - atoi(stashCount1) - 1;
+            printf(GREEN"stash index : %d\n"RESET , ind);
+            printf("message : %s\n" , message);
+            printf("branch name : %s\n" , branchName);
+            printf(BLUE"____________________________________________________\n"RESET);
+        }
+        fclose(stashListTxt2);
+    }
     // stash push
-    if (!strcmp(argv[2] , "push") && (argv[3] == NULL) || !strcmp(argv[3] , "-m"))
+    else if (!strcmp(argv[2] , "push") && (argv[3] == NULL) || !strcmp(argv[3] , "-m"))
     {
         //get message
         char message[1000] = "";
@@ -5207,8 +5500,6 @@ void Stash(char **argv)
                     system(commandForCopy);
                 }
             }
-            
-
         }
         
         //get the current commit address 
@@ -5225,14 +5516,28 @@ void Stash(char **argv)
         strcat(currentCommitAddress , line2);
         fclose(currentCommitTxt);
 
+        //get current branch name
+        char curBranch[1000] = "";
+        FILE* currentBranchTxt = fopen(currentBranchName , "r");
+        if (currentBranchTxt == NULL)
+        {
+            printf("BRUH you don't have any branches :/\n");
+            return;
+        }
+        char line3[1000];
+        fgets(line3 , sizeof(line3) , currentBranchTxt);
+        line3[strcspn(line3 , "\n")] = '\0';
+        strcat(curBranch , line3);
+        fclose(currentBranchTxt);
+
         // add stash name message and address to stash list
         FILE* stashListTxt = fopen(stashList , "a");
-        fprintf(stashListTxt , "%s-%s-%s-%s\n" , stashCountString , message , stashAddress , currentCommitAddress);
+        fprintf(stashListTxt , "%s-%s-%s-%s-%s\n" , stashCountString , message , stashAddress , currentCommitAddress , curBranch);
         fclose(stashListTxt);
 
         //set stash as the latest stash
         FILE* latestStashTxt = fopen(stashLatest , "w");
-        fprintf(latestStashTxt , "%s-%s-%s-%s\n" , stashCountString , message , stashAddress , currentCommitAddress);
+        fprintf(latestStashTxt , "%s-%s-%s-%s-%s\n" , stashCountString , message , stashAddress , currentCommitAddress , curBranch);
         fclose(latestStashTxt);
 
         //increase stash count
@@ -5246,6 +5551,179 @@ void Stash(char **argv)
         //print successful
         printf("you just pushed your stash !\n");
     }
+    //stash show
+    else if (!strcmp(argv[2] , "show") && argv[3] != NULL)
+    {
+        int stashIndex = atoi(argv[3]);
+        if (stashIndex >= stashCounts)
+        {
+            printf("BRUH this stash doesn't exists :/\n");
+            return;
+        }
+        
+        //get the stash address
+        char stashAddress[1000] = "";
+        strcat(stashAddress , stashRepo);
+        strcat(stashAddress , "/stash");
+        char stashCountString[100];
+        sprintf(stashCountString, "%d", stashIndex);
+        strcat(stashAddress, stashCountString);
+
+        //get the commit address of the stash when we stashed it
+        char commitAddress[1000] = "";
+        FILE* stashListTxt = fopen(stashList , "r");
+        char line[1000];
+        int isStashFound = 0;
+        while (fgets(line , sizeof(line) , stashListTxt) != NULL)
+        {
+            char stashId[1000] , message[1000] , stashAddress2[1000] , commitAddress2[1000] , branch[1000] ;
+            sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashId , message , stashAddress2 , commitAddress2 , branch);
+            if (!strcmp(stashId , stashCountString))
+            {
+                isStashFound = 1;
+                strcat(commitAddress , commitAddress2);
+                break;
+            }
+        }
+
+        if (!isStashFound)
+        {
+            printf("BRUH this stash doesn't exists :/\n");
+            return;
+        }
+
+        // do the diff between the stashaddress and the commit address
+        char commandForFindAllFilesInStash[1000] = "find \"";
+        strcat(commandForFindAllFilesInStash , stashAddress);
+        strcat(commandForFindAllFilesInStash , "\" -type f 2> .niggit/error.log");
+        FILE* tempForFindAllFilesInStash = popen(commandForFindAllFilesInStash , "r");
+        char line4[1000];
+        while (fgets(line4 , sizeof(line4) , tempForFindAllFilesInStash) != NULL)
+        {
+            line4[strcspn(line4 , "\n")] = '\0';
+            char commandForFindAllFilesInCommit[1000] = "find \"";
+            strcat(commandForFindAllFilesInCommit , commitAddress);
+            strcat(commandForFindAllFilesInCommit , "\" -type f 2> .niggit/error.log");
+            FILE* tempForFindAllFilesInCommit = popen(commandForFindAllFilesInCommit , "r");
+            char line3[1000];
+            int isFileFound = 0;
+            while (fgets(line3 , sizeof(line3) , tempForFindAllFilesInCommit) != NULL)
+            {
+                line3[strcspn(line3 , "\n")] = '\0';
+                if (!strcmp(line4 + strlen(line4) + 1 , line3 + strlen(line3) + 1))
+                {
+                    isFileFound = 1;
+                    DiffFounder(line4 , line3 , 1 , 1000000000 , 1 , 1000000000);
+                    break;
+                }
+            }
+
+        }
+        //change the root files to commit files
+        char commandForFindAllFilesInRoot[1000] = "find ";
+        char rootAddress[1000] = "";
+        FILE* rootAddressTxt = popen("pwd" , "r");
+        fgets(rootAddress , sizeof(rootAddress) , rootAddressTxt);
+        rootAddress[strcspn(rootAddress , "\n")] = '\0';
+        strcat(commandForFindAllFilesInRoot , rootAddress);
+        strcat(commandForFindAllFilesInRoot , " 2> .niggit/error.log");
+        FILE* tempForFindAllFilesInRoot = popen(commandForFindAllFilesInRoot , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , tempForFindAllFilesInRoot) != NULL)
+        {
+            line2[strcspn(line2 , "\n")] = '\0';
+            if (!strcmp(line2 , rootAddress))
+            {
+                continue;
+            }        
+            //skip if .niggit
+            if (strstr(line2 , ".niggit") != NULL)
+            {
+                continue;
+            }
+            
+            //delete everything in root
+            char commandForDelete[1000] = "rm -rf \"";
+            strcat(commandForDelete , line2);
+            strcat(commandForDelete , "\" 2> .niggit/error.log");
+            system(commandForDelete);
+        }
+
+        //copy everything from commit address to root
+        char commandForFindAllFilesInCommit[1000] = "find ";
+        strcat(commandForFindAllFilesInCommit , commitAddress);
+        strcat(commandForFindAllFilesInCommit , " 2> .niggit/error.log");
+        FILE* tempForFindAllFilesInCommit = popen(commandForFindAllFilesInCommit , "r");
+        char line3[1000];
+        while (fgets(line3 , sizeof(line3) , tempForFindAllFilesInCommit) != NULL)
+        {
+            line3[strcspn(line3 , "\n")] = '\0';
+            if (!strcmp(line3 , commitAddress))
+            {
+                continue;
+            }
+            // skips if we are cping a file inside another folder
+            int slashCount = 0;
+            for (size_t i = 0; i < strlen(line3); i++)
+            {
+                if (line3[i] == '/')
+                {
+                    slashCount++;
+                }
+            }
+            int slashCountRoot = 0;
+            for (size_t i = 0; i < strlen(rootAddress); i++)
+            {
+                if (rootAddress[i] == '/')
+                {
+                    slashCountRoot++;
+                }
+            }
+            if (slashCount > slashCountRoot + 1)
+            {
+                continue;
+            }
+            // finds out if we are cping a file or a folder
+            int hasDot = 0;
+            for (size_t i = 0; i < strlen(line3); i++)
+            {
+                if (line3[i] == '.')
+                {
+                    hasDot = 1;
+                    break;
+                }
+            }
+            
+            if (!hasDot)
+            {
+                if (strstr(line3 , ".niggit") != NULL)
+                {
+                    char commandForCopy[1000] = "cp -r \"";
+                    strcat(commandForCopy , line3);
+                    strcat(commandForCopy , "\" \"");
+                    strcat(commandForCopy , rootAddress);
+                    strcat(commandForCopy , "\" 2> .niggit/error.log");
+                    system(commandForCopy);
+                }
+            }
+            else
+            {
+                if (strstr(line3 , ".niggit") != NULL)
+                {
+                    char commandForCopy[1000] = "cp \"";
+                    strcat(commandForCopy , line3);
+                    strcat(commandForCopy , "\" \"");
+                    strcat(commandForCopy , rootAddress);
+                    strcat(commandForCopy , "\" 2> .niggit/error.log");
+                    system(commandForCopy);
+                }
+            }
+        }
+
+        //print successful
+        printf("you just showed your stash !\n");
+    }
+    
     
 }
 void Debug(char **argv)
