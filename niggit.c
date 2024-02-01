@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+//stage
 #define stagesCurrentAddress ".niggit/.stages/stages-current"
 #define latestStageTextFile ".niggit/.stages/stages-latest.txt"
 #define stageCount ".niggit/.stages/stages-count.txt"
@@ -72,6 +73,171 @@
 #define REVERSE "\033[7m"
 #define HIDDEN "\033[8m"
 #define RESET "\033[0m"
+#define BOLDRESET "\033[1m"
+#define ITALIC "\033[3m"
+#define ITALICRESET "\033[23m"
+#define STRIKETHROUGH "\033[9m"
+#define STRIKETHROUGHRESET "\033[29m"
+#define BOLDITALIC "\033[3;1m"
+#define BOLDITALICRESET "\033[3;23m"
+#define BOLDUNDERLINE "\033[4;1m"
+#define BOLDUNDERLINERESET "\033[4;23m"
+#define BOLDSTRIKETHROUGH "\033[9;1m"
+#define BOLDSTRIKETHROUGHRESET "\033[9;23m"
+#define BOLDITALICUNDERLINE "\033[4;3;1m"
+#define BOLDITALICUNDERLINERESET "\033[4;3;23m"
+#define BOLDITALICSTRIKETHROUGH "\033[9;3;1m"
+#define BOLDITALICSTRIKETHROUGHRESET "\033[9;3;23m" 
+#define BOLDUNDERLINESTRIKETHROUGH "\033[4;9;1m"
+#define BOLDUNDERLINESTRIKETHROUGHRESET "\033[4;9;23m"
+#define BOLDITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;1m"
+#define BOLDITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;23m"
+#define BOLDREDUNDERLINE "\033[4;31;1m"
+#define BOLDREDUNDERLINERESET "\033[4;31;23m"
+#define BOLDREDSTRIKETHROUGH "\033[9;31;1m"
+#define BOLDREDSTRIKETHROUGHRESET "\033[9;31;23m"
+#define BOLDREDITALIC "\033[3;31;1m"
+#define BOLDREDITALICRESET "\033[3;31;23m"
+#define BOLDREDITALICUNDERLINE "\033[4;3;31;1m"
+#define BOLDREDITALICUNDERLINERESET "\033[4;3;31;23m"
+#define BOLDREDITALICSTRIKETHROUGH "\033[9;3;31;1m"
+#define BOLDREDITALICSTRIKETHROUGHRESET "\033[9;3;31;23m"
+#define BOLDREDUNDERLINESTRIKETHROUGH "\033[4;9;31;1m"
+#define BOLDREDUNDERLINESTRIKETHROUGHRESET "\033[4;9;31;23m"
+#define BOLDREDITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;31;1m"
+#define BOLDREDITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;31;23m"
+#define BOLDGREENUNDERLINE "\033[4;32;1m"
+#define BOLDGREENUNDERLINERESET "\033[4;32;23m"
+#define BOLDGREENSTRIKETHROUGH "\033[9;32;1m"
+#define BOLDGREENSTRIKETHROUGHRESET "\033[9;32;23m"
+#define BOLDGREENITALIC "\033[3;32;1m"
+#define BOLDGREENITALICRESET "\033[3;32;23m"
+#define BOLDGREENITALICUNDERLINE "\033[4;3;32;1m"
+#define BOLDGREENITALICUNDERLINERESET "\033[4;3;32;23m"
+#define BOLDGREENITALICSTRIKETHROUGH "\033[9;3;32;1m"
+#define BOLDGREENITALICSTRIKETHROUGHRESET "\033[9;3;32;23m"
+#define BOLDGREENUNDERLINESTRIKETHROUGH "\033[4;9;32;1m"
+#define BOLDGREENUNDERLINESTRIKETHROUGHRESET "\033[4;9;32;23m"
+#define BOLDGREENITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;32;1m"
+#define BOLDGREENITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;32;23m"
+#define BOLDBLUEUNDERLINE "\033[4;34;1m"
+#define BOLDBLUEUNDERLINERESET "\033[4;34;23m"
+#define BOLDBLUESTRIKETHROUGH "\033[9;34;1m"
+#define BOLDBLUESTRIKETHROUGHRESET "\033[9;34;23m"
+#define BOLDBLUEITALIC "\033[3;34;1m"
+#define BOLDBLUEITALICRESET "\033[3;34;23m"
+#define BOLDBLUEITALICUNDERLINE "\033[4;3;34;1m"
+#define BOLDBLUEITALICUNDERLINERESET "\033[4;3;34;23m"
+#define BOLDBLUEITALICSTRIKETHROUGH "\033[9;3;34;1m"
+#define BOLDBLUEITALICSTRIKETHROUGHRESET "\033[9;3;34;23m"
+#define BOLDBLUEUNDERLINESTRIKETHROUGH "\033[4;9;34;1m"
+#define BOLDBLUEUNDERLINESTRIKETHROUGHRESET "\033[4;9;34;23m"
+#define BOLDBLUEITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;34;1m"
+#define BOLDBLUEITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;34;23m"
+#define BOLDCYANUNDERLINE "\033[4;36;1m"
+#define BOLDCYANUNDERLINERESET "\033[4;36;23m"
+#define BOLDCYANSTRIKETHROUGH "\033[9;36;1m"
+#define BOLDCYANSTRIKETHROUGHRESET "\033[9;36;23m"
+#define BOLDCYANITALIC "\033[3;36;1m"
+#define BOLDCYANITALICRESET "\033[3;36;23m"
+#define BOLDCYANITALICUNDERLINE "\033[4;3;36;1m"
+#define BOLDCYANITALICUNDERLINERESET "\033[4;3;36;23m"
+#define BOLDCYANITALICSTRIKETHROUGH "\033[9;3;36;1m"
+#define BOLDCYANITALICSTRIKETHROUGHRESET "\033[9;3;36;23m"
+#define BOLDCYANUNDERLINESTRIKETHROUGH "\033[4;9;36;1m"
+#define BOLDCYANUNDERLINESTRIKETHROUGHRESET "\033[4;9;36;23m"
+#define BOLDCYANITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;36;1m"
+#define BOLDCYANITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;36;23m"
+#define BOLDYELLOWUNDERLINE "\033[4;33;1m"
+#define BOLDYELLOWUNDERLINERESET "\033[4;33;23m"
+#define BOLDYELLOWSTRIKETHROUGH "\033[9;33;1m"
+#define BOLDYELLOWSTRIKETHROUGHRESET "\033[9;33;23m"
+#define BOLDYELLOWITALIC "\033[3;33;1m"
+#define BOLDYELLOWITALICRESET "\033[3;33;23m"
+#define BOLDYELLOWITALICUNDERLINE "\033[4;3;33;1m"
+#define BOLDYELLOWITALICUNDERLINERESET "\033[4;3;33;23m"
+#define BOLDYELLOWITALICSTRIKETHROUGH "\033[9;3;33;1m"
+#define BOLDYELLOWITALICSTRIKETHROUGHRESET "\033[9;3;33;23m"
+#define BOLDYELLOWUNDERLINESTRIKETHROUGH "\033[4;9;33;1m"
+#define BOLDYELLOWUNDERLINESTRIKETHROUGHRESET "\033[4;9;33;23m"
+#define BOLDYELLOWITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;33;1m"
+#define BOLDYELLOWITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;33;23m"
+#define BOLDMAGENTABOLDUNDERLINE "\033[4;35;1m"
+#define BOLDMAGENTABOLDUNDERLINERESET "\033[4;35;23m"
+#define BOLDMAGENTABOLDSTRIKETHROUGH "\033[9;35;1m"
+#define BOLDMAGENTABOLDSTRIKETHROUGHRESET "\033[9;35;23m"
+#define BOLDMAGENTABOLDITALIC "\033[3;35;1m"
+#define BOLDMAGENTABOLDITALICRESET "\033[3;35;23m"
+#define BOLDMAGENTABOLDITALICUNDERLINE "\033[4;3;35;1m"
+#define BOLDMAGENTABOLDITALICUNDERLINERESET "\033[4;3;35;23m"
+#define BOLDMAGENTABOLDITALICSTRIKETHROUGH "\033[9;3;35;1m"
+#define BOLDMAGENTABOLDITALICSTRIKETHROUGHRESET "\033[9;3;35;23m"
+#define BOLDMAGENTABOLDUNDERLINESTRIKETHROUGH "\033[4;9;35;1m"
+#define BOLDMAGENTABOLDUNDERLINESTRIKETHROUGHRESET "\033[4;9;35;23m"
+#define BOLDMAGENTABOLDITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;35;1m"
+#define BOLDMAGENTABOLDITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;35;23m"
+#define BOLDWHITEUNDERLINE "\033[4;37;1m"
+#define BOLDWHITEUNDERLINERESET "\033[4;37;23m"
+#define BOLDWHITESTRIKETHROUGH "\033[9;37;1m"
+#define BOLDWHITESTRIKETHROUGHRESET "\033[9;37;23m"
+#define BOLDWHITEITALIC "\033[3;37;1m"
+#define BOLDWHITEITALICRESET "\033[3;37;23m"
+#define BOLDWHITEITALICUNDERLINE "\033[4;3;37;1m"
+#define BOLDWHITEITALICUNDERLINERESET "\033[4;3;37;23m"
+#define BOLDWHITEITALICSTRIKETHROUGH "\033[9;3;37;1m"
+#define BOLDWHITEITALICSTRIKETHROUGHRESET "\033[9;3;37;23m"
+#define BOLDWHITEUNDERLINESTRIKETHROUGH "\033[4;9;37;1m"
+#define BOLDWHITEUNDERLINESTRIKETHROUGHRESET "\033[4;9;37;23m"
+#define BOLDWHITEITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;37;1m"
+#define BOLDWHITEITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;37;23m"
+#define BOLDBLACKUNDERLINE "\033[4;30;1m"
+#define BOLDBLACKUNDERLINERESET "\033[4;30;23m"
+#define BOLDBLACKSTRIKETHROUGH "\033[9;30;1m"
+#define BOLDBLACKSTRIKETHROUGHRESET "\033[9;30;23m"
+#define BOLDBLACKITALIC "\033[3;30;1m"
+#define BOLDBLACKITALICRESET "\033[3;30;23m"
+#define BOLDBLACKITALICUNDERLINE "\033[4;3;30;1m"
+#define BOLDBLACKITALICUNDERLINERESET "\033[4;3;30;23m"
+#define BOLDBLACKITALICSTRIKETHROUGH "\033[9;3;30;1m"
+#define BOLDBLACKITALICSTRIKETHROUGHRESET "\033[9;3;30;23m"
+#define BOLDBLACKUNDERLINESTRIKETHROUGH "\033[4;9;30;1m"
+#define BOLDBLACKUNDERLINESTRIKETHROUGHRESET "\033[4;9;30;23m"
+#define BOLDBLACKITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;30;1m"
+#define BOLDBLACKITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;30;23m"
+#define BOLDRESETUNDERLINE "\033[4;39;1m"
+#define BOLDRESETUNDERLINERESET "\033[4;39;23m"
+#define BOLDRESETSTRIKETHROUGH "\033[9;39;1m"
+#define BOLDRESETSTRIKETHROUGHRESET "\033[9;39;23m"
+#define BOLDRESETITALIC "\033[3;39;1m"
+#define BOLDRESETITALICRESET "\033[3;39;23m"
+#define BOLDRESETITALICUNDERLINE "\033[4;3;39;1m"
+#define BOLDRESETITALICUNDERLINERESET "\033[4;3;39;23m"
+#define BOLDRESETITALICSTRIKETHROUGH "\033[9;3;39;1m"
+#define BOLDRESETITALICSTRIKETHROUGHRESET "\033[9;3;39;23m"
+#define BOLDRESETUNDERLINESTRIKETHROUGH "\033[4;9;39;1m"
+#define BOLDRESETUNDERLINESTRIKETHROUGHRESET "\033[4;9;39;23m"
+#define BOLDRESETITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;39;1m"
+#define BOLDRESETITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;39;23m"
+#define BOLDREDRESETUNDERLINE "\033[4;31;39;1m"
+#define BOLDREDRESETUNDERLINERESET "\033[4;31;39;23m"
+#define BOLDREDRESETSTRIKETHROUGH "\033[9;31;39;1m"
+#define BOLDREDRESETSTRIKETHROUGHRESET "\033[9;31;39;23m"
+#define BOLDREDRESETITALIC "\033[3;31;39;1m"
+#define BOLDREDRESETITALICRESET "\033[3;31;39;23m"
+#define BOLDREDRESETITALICUNDERLINE "\033[4;3;31;39;1m"
+#define BOLDREDRESETITALICUNDERLINERESET "\033[4;3;31;39;23m"
+#define BOLDREDRESETITALICSTRIKETHROUGH "\033[9;3;31;39;1m"
+#define BOLDREDRESETITALICSTRIKETHROUGHRESET "\033[9;3;31;39;23m"
+#define BOLDREDRESETUNDERLINESTRIKETHROUGH "\033[4;9;31;39;1m"
+#define BOLDREDRESETUNDERLINESTRIKETHROUGHRESET "\033[4;9;31;39;23m"
+#define BOLDREDRESETITALICUNDERLINESTRIKETHROUGH "\033[4;9;3;31;39;1m"
+#define BOLDREDRESETITALICUNDERLINESTRIKETHROUGHRESET "\033[4;9;3;31;39;23m"
+#define BOLDGREENRESETUNDERLINE "\033[4;32;39;1m"
+#define BOLDGREENRESETUNDERLINERESET "\033[4;32;39;23m"
+#define BOLDGREENRESETSTRIKETHROUGH "\033[9;32;39;1m"
+#define BOLDGREENRESETSTRIKETHROUGHRESET "\033[9;32;39;23m"
+#define BOLDGREENRESETITALIC "\033[3;32;39;1m"
+#define BOLDGREENRESETITALICRESET "\033[3;32;39;23m"
 //Structs
 typedef struct Hook
 {
@@ -2586,6 +2752,36 @@ int Alias(char **argv)
 }
 char* CheckOut(char **argv)
 {
+    if (IsNiggitInitialized() == 0)
+    {
+        printf("BRUH niggit is not initialized :/\n");
+        return;
+    }
+    //check if stagesCurrent folder is empty or not
+    if (1)
+    {
+        char commandToCheckIfStagesCurrentIsEmpty[1000] = "ls \"";
+        strcat(commandToCheckIfStagesCurrentIsEmpty , stagesCurrentAddress);
+        strcat(commandToCheckIfStagesCurrentIsEmpty , "\"");
+        FILE* temp = popen(commandToCheckIfStagesCurrentIsEmpty , "r");
+        char line[1000];
+        int isStagesCurrentEmpty = 1;
+        while (fgets(line , sizeof(line) , temp) != NULL)
+        {
+            if (!strcmp(line , ".\n") || !strcmp(line , "..\n") || !strcmp(line , stagesCurrentAddress))
+            {
+                continue;
+            }
+            isStagesCurrentEmpty = 0;
+            break;
+        }
+        if (!isStagesCurrentEmpty)
+        {
+            printf("you have uncommited changes :/\n");
+            return;
+        }
+    }
+    
     //checkout commit
     if (strstr(argv[2] , "#") != NULL)
     {
@@ -3487,41 +3683,13 @@ void Merge(char **argv)
         {
             continue;
         }
-        // finds out if we are cping a file or a folder
-        int hasDot = 0;
-        for (size_t i = 0; i < strlen(line1); i++)
-        {
-            if (line1[i] == '.')
-            {
-                hasDot = 1;
-                break;
-            }
-        }
-        
-        if (!hasDot)
-        {
-            if (strstr(line1 , ".niggit") == NULL)
-            {
-                char commandForCopy[1000] = "cp -r \"";
-                strcat(commandForCopy , line1);
-                strcat(commandForCopy , "\" \"");
-                strcat(commandForCopy , newCommitAddress);
-                strcat(commandForCopy , "\" 2> .niggit/error.log");
-                system(commandForCopy);
-            }
-        }
-        else
-        {
-            if (strstr(line1 , ".niggit") == NULL)
-            {
-                char commandForCopy[1000] = "cp \"";
-                strcat(commandForCopy , line1);
-                strcat(commandForCopy , "\" \"");
-                strcat(commandForCopy , newCommitAddress);
-                strcat(commandForCopy , "\" 2> .niggit/error.log");
-                system(commandForCopy);
-            }
-        }
+
+        char commandForCopy[1000] = "cp -r \"";
+        strcat(commandForCopy , line1);
+        strcat(commandForCopy , "\" \"");
+        strcat(commandForCopy , newCommitAddress);
+        strcat(commandForCopy , "\" 2> .niggit/error.log");
+        system(commandForCopy);
     }
 
     FILE* tempForFind2 = popen(commandForFindAllFilesInLatestCommitOfBranch2 , "r");
@@ -3557,45 +3725,14 @@ void Merge(char **argv)
         {
             continue;
         }
-        // finds out if we are cping a file or a folder
-        int hasDot = 0;
-        for (size_t i = 0; i < strlen(line2); i++)
-        {
-            if (line2[i] == '.')
-            {
-                hasDot = 1;
-                break;
-            }
-        }
         
-        if (!hasDot)
-        {
-            if (strstr(line2 , ".niggit") == NULL)
-            {
-                char commandForCopy[1000] = "cp -r \"";
-                strcat(commandForCopy , line2);
-                strcat(commandForCopy , "\" \"");
-                strcat(commandForCopy , newCommitAddress);
-                strcat(commandForCopy , "\" 2> .niggit/error.log");
-                system(commandForCopy);
-            }
-        }
-        else
-        {
-            if (strstr(line2 , ".niggit") == NULL)
-            {
-                char commandForCopy[1000] = "cp \"";
-                strcat(commandForCopy , line2);
-                strcat(commandForCopy , "\" \"");
-                strcat(commandForCopy , newCommitAddress);
-                strcat(commandForCopy , "\" 2> .niggit/error.log");
-                system(commandForCopy);
-            }
-        }
+        char commandForCopy[1000] = "cp \"";
+        strcat(commandForCopy , line2);
+        strcat(commandForCopy , "\" \"");
+        strcat(commandForCopy , newCommitAddress);
+        strcat(commandForCopy , "\" 2> .niggit/error.log");
+        system(commandForCopy);
     }
-
-    fclose(tempForFind1);
-    fclose(tempForFind2);
 
     //print successful
     printf("you just merged %s and %s !!!!\n" , branchName1 , branchName2);
