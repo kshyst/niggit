@@ -2755,7 +2755,7 @@ char* CheckOut(char **argv)
     if (IsNiggitInitialized() == 0)
     {
         printf("BRUH niggit is not initialized :/\n");
-        return;
+        return NULL;
     }
     //check if stagesCurrent folder is empty or not
     if (1)
@@ -2778,10 +2778,9 @@ char* CheckOut(char **argv)
         if (!isStagesCurrentEmpty)
         {
             printf("you have uncommited changes :/\n");
-            return;
+            return NULL;
         }
     }
-    
     //checkout commit
     if (strstr(argv[2] , "#") != NULL)
     {
@@ -2812,7 +2811,7 @@ char* CheckOut(char **argv)
             printf("BRUH this commit doesn't exists :/\n");
             return;
         }
-
+        
         // finding the address of the root of the branch
         FILE* branchesTxtFile = fopen(branchesTextFile , "r");
         char bNames[1000];
@@ -2835,6 +2834,7 @@ char* CheckOut(char **argv)
             return;
         }
 
+
         // finding the address of the commit
         char commitAddress[1000] = "";
         strcat(commitAddress , branchOfCommitAddress);
@@ -2843,13 +2843,13 @@ char* CheckOut(char **argv)
 
         // delete every thing from root execpt .niggit and .niggit-settings
         char rootAddress[1000] = "";
-        FILE* temp = popen("pwd" , "r");
-        fgets(rootAddress , sizeof(rootAddress) , temp);
+        FILE* temp1 = popen("pwd" , "r");
+        fgets(rootAddress , sizeof(rootAddress) , temp1);
 
-        char commandForDelete[1000] = "find ";
+        char commandForDelete[1000] = "find \"";
         strcat(commandForDelete , rootAddress);
-        strcat(commandForDelete , " 2> .niggit/error.log");
-
+        strcat(commandForDelete , "\" 2> .niggit/error.log");
+        
         FILE* tempForDelete = popen(commandForDelete , "r");
         char line[1000];
         while (fgets(line , sizeof(line) , tempForDelete) != NULL)
@@ -2907,7 +2907,7 @@ char* CheckOut(char **argv)
         FILE* currentCommitTxt = fopen(currentCommit , "w");
         fprintf(currentCommitTxt , "%s" , commitAddress);
         fclose(currentCommitTxt);
-
+        
         //print successful
         printf("you just checked out to a commit !\n");
     }
@@ -2937,9 +2937,9 @@ char* CheckOut(char **argv)
         FILE* temp = popen("pwd" , "r");
         fgets(rootAddress , sizeof(rootAddress) , temp);
 
-        char commandForDelete[1000] = "find ";
+        char commandForDelete[1000] = "find \"";
         strcat(commandForDelete , rootAddress);
-        strcat(commandForDelete , " 2> .niggit/error.log");
+        strcat(commandForDelete , "\" 2> .niggit/error.log");
 
         FILE* tempForDelete = popen(commandForDelete , "r");
         char line[1000];
@@ -3087,9 +3087,9 @@ char* CheckOut(char **argv)
         FILE* temp = popen("pwd" , "r");
         fgets(rootAddress , sizeof(rootAddress) , temp);
 
-        char commandForDelete[1000] = "find ";
+        char commandForDelete[1000] = "find \"";
         strcat(commandForDelete , rootAddress);
-        strcat(commandForDelete , " 2> .niggit/error.log");
+        strcat(commandForDelete , "\" 2> .niggit/error.log");
 
         FILE* tempForDelete = popen(commandForDelete , "r");
         char line2[1000];
@@ -3191,9 +3191,9 @@ char* CheckOut(char **argv)
         FILE* temp = popen("pwd" , "r");
         fgets(rootAddress , sizeof(rootAddress) , temp);
         
-        char commandForDelete[1000] = "find ";
+        char commandForDelete[1000] = "find \"";
         strcat(commandForDelete , rootAddress);
-        strcat(commandForDelete , " 2> .niggit/error.log");
+        strcat(commandForDelete , "\" 2> .niggit/error.log");
 
         FILE* tempForDelete = popen(commandForDelete , "r");
         char line[1000];
@@ -6653,8 +6653,68 @@ void Stash(char **argv)
         //print successful
         printf("you just showed your stash !\n");
     }
-    
-    
+    //stash branch
+    else if (!strcmp(argv[2] , "branch") && argv[3] != NULL)
+    {
+        char branchName[1000] = "";
+        strcat(branchName , argv[3]);
+
+        //create the branch
+        char commandForCreateBranch[1000] = "niggit branch ";
+        strcat(commandForCreateBranch , branchName);
+        FILE* tempForCreateBranch = popen(commandForCreateBranch , "r");
+        char line2[1000];
+        while (fgets(line2 , sizeof(line2) , tempForCreateBranch) != NULL)
+        {
+            if (strstr(line2 , "already exists") != NULL)
+            {
+                printf(BOLDREDITALIC"creating the branch failed , this branch already exists!\n"RESET);
+                return;
+            }
+        }
+
+        //checkout to branch
+        char commandForCheckout[1000] = "niggit checkout ";
+        strcat(commandForCheckout , branchName);
+        FILE* tempForCheckout = popen(commandForCheckout , "r");
+        char line1[1000];
+        while (fgets(line1 , sizeof(line1) , tempForCheckout) != NULL)
+        {
+            if (strstr(line1 , "uncommited") != NULL)
+            {
+                printf(BOLDREDITALIC"stashing the branch failed , you have uncommited changes!\n"RESET);
+                return;
+            }
+        }
+        //pop stash
+        char indexInString[1000] = "0";
+        if (argv[4] != NULL)
+        {
+            int index = atoi(argv[4]);
+            if (index < 0 || index >= stashCounts)
+            {
+                printf("BRUH this index is not valid :/\n");
+                return;
+            }
+            sprintf(indexInString , "%d" , index);
+        }
+        char commandForPopStash[1000] = "niggit stash pop ";
+        strcat(commandForPopStash , indexInString);
+        FILE* tempForPopStash = popen(commandForPopStash , "r");
+        char line[1000];
+        while (fgets(line , sizeof(line) , tempForPopStash) != NULL)
+        {
+            if (strstr(line , "there is a conflict") != NULL)
+            {
+                printf(BOLDREDITALIC"stashing the branch failed , there is a conflict!\n"RESET);
+                return;
+            }
+        }
+        fclose(tempForPopStash);
+        
+        //print successful
+        printf(BOLDGREENITALIC"you just created a branch and popped your stash !\n"RESET);
+    }
 }
 void Debug(char **argv)
 {
