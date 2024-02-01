@@ -1483,6 +1483,7 @@ void Branch(char **argv)
         strcat(makeFile , "/");
         strcat(makeFile , "latest-commit.txt");
         FILE *fp6 = fopen(makeFile , "w");
+        fprintf(fp6 , "%s" , latestCommit);
         fclose(fp6);
 
         //creating the commit list
