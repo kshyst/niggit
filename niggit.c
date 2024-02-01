@@ -1623,6 +1623,11 @@ void Status(char **argv)
     while (fgets(line3 , sizeof(line3) , tempForFindAllFilesInLastCommit) != NULL)
     {
         line3[strcspn(line3, "\n")] = 0;
+        if (strstr(line3 , "branch-") != NULL)
+        {
+            continue;
+        }
+        
         int isFileInRoot = 0;
         FILE* tempForFindAllFilesInRoot = popen(commandForFindAllFilesInRoot , "r");
         char line4[1000];
