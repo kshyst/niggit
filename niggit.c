@@ -6659,7 +6659,35 @@ void Stash(char **argv)
     {
         char branchName[1000] = "";
         strcat(branchName , argv[3]);
-
+        //pop stash
+        char indexInString[1000] = "0";
+        if (argv[4] != NULL)
+        {
+            int index = atoi(argv[4]);
+            if (index < 0 || index >= stashCounts)
+            {
+                printf("BRUH this index is not valid :/\n");
+                return;
+            }
+            sprintf(indexInString , "%d" , index);
+        }
+        char commandForPopStash[1000] = "niggit stash pop ";
+        strcat(commandForPopStash , indexInString);
+        FILE* tempForPopStash = popen(commandForPopStash , "r");
+        char line3[1000];
+        while (fgets(line3 , sizeof(line3) , tempForPopStash) != NULL)
+        {
+            if (strstr(line3 , "there is a conflict") != NULL)
+            {
+                printf(BOLDREDITALIC"stashing the branch failed , there is a conflict!\n"RESET);
+                return;
+            }
+        }
+        fclose(tempForPopStash);
+        //push stash
+        char commandForPushStash[1000] = "niggit stash push";
+        FILE* tempForPushStash = popen(commandForPushStash , "r");
+        fclose(tempForPushStash);
         //create the branch
         char commandForCreateBranch[1000] = "niggit branch ";
         strcat(commandForCreateBranch , branchName);
@@ -6688,22 +6716,10 @@ void Stash(char **argv)
             }
         }
         //pop stash
-        char indexInString[1000] = "0";
-        if (argv[4] != NULL)
-        {
-            int index = atoi(argv[4]);
-            if (index < 0 || index >= stashCounts)
-            {
-                printf("BRUH this index is not valid :/\n");
-                return;
-            }
-            sprintf(indexInString , "%d" , index);
-        }
-        char commandForPopStash[1000] = "niggit stash pop ";
-        strcat(commandForPopStash , indexInString);
-        FILE* tempForPopStash = popen(commandForPopStash , "r");
+        char commandForPopStash2[1000] = "niggit stash pop 0";
+        FILE* tempForPopStash2 = popen(commandForPopStash2 , "r");
         char line[1000];
-        while (fgets(line , sizeof(line) , tempForPopStash) != NULL)
+        while (fgets(line , sizeof(line) , tempForPopStash2) != NULL)
         {
             if (strstr(line , "there is a conflict") != NULL)
             {
@@ -6711,7 +6727,7 @@ void Stash(char **argv)
                 return;
             }
         }
-        fclose(tempForPopStash);
+        fclose(tempForPopStash2);
         
         //print successful
         printf(BOLDGREENITALIC"you just created a branch and popped your stash !\n"RESET);
