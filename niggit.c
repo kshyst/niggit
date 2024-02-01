@@ -6062,11 +6062,10 @@ void Stash(char **argv)
         fclose(stashListTxt);
 
         //check if the index is valid
-        int index = stashCounts - 1;
+        int index = 0;
         if (argv[3] != NULL)
         {
             index = atoi(argv[3]);
-            index = stashCounts - index - 1;
             if (index < 0 || index >= stashCounts)
             {
                 printf("BRUH this index is not valid :/\n");
@@ -6074,7 +6073,94 @@ void Stash(char **argv)
             }
         }
 
-        //copy the everything from stash folder into root
+        //get root address
+        char rootAddress[1000] = "";
+        FILE* temp = popen("pwd" , "r");
+        fgets(rootAddress , sizeof(rootAddress) , temp);
+        rootAddress[strlen(rootAddress) - 1] = '\0';
+
+        //get the stash folder address
+        int indexToFindStash = stashCounts - index - 1;
+        FILE* stashListTxt2 = fopen(stashList , "r");
+        char line[1000];
+        char stashFolderAddress[1000] = "";
+        while (fgets(line , sizeof(line) , stashListTxt2) != NULL)
+        {
+            if (indexToFindStash == 0)
+            {
+                char stashCount1[1000] , message[1000] , stashAddress[1000] , commitAddress[1000] , branchName[1000];
+                sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashCount1 , message , stashAddress , branchName , commitAddress );
+                strcat(stashFolderAddress , stashAddress);
+                break;
+            }
+            indexToFindStash--;
+        }
+        fclose(stashListTxt2);
+
+        //check for conflicts
+        char commandForFindAllFilesInLatestCommitOfBranch11[1000] = "find \"";
+        strcat(commandForFindAllFilesInLatestCommitOfBranch11 , stashFolderAddress);
+        strcat(commandForFindAllFilesInLatestCommitOfBranch11 , "\" -type f 2> .niggit/error.log");
+
+        char commandForFindAllFilesInLatestCommitOfBranch21[1000] = "find \"";
+        strcat(commandForFindAllFilesInLatestCommitOfBranch21 , rootAddress);
+        strcat(commandForFindAllFilesInLatestCommitOfBranch21 , "\" -type f 2> .niggit/error.log");
+        FILE* tempForFind11 = popen(commandForFindAllFilesInLatestCommitOfBranch11 , "r");
+        char line11[1000];
+        while (fgets(line11 , sizeof(line11) , tempForFind11) != NULL)
+        {
+            line11[strlen(line11) - 1] = '\0';
+            FILE* tempForFind2 = popen(commandForFindAllFilesInLatestCommitOfBranch21 , "r");
+            char line2[1000];
+            while (fgets(line2 , sizeof(line2) , tempForFind2) != NULL)
+            {
+                line2[strlen(line2) - 1] = '\0';
+                if (!strcmp(line11 + strlen(stashFolderAddress) + 1 , line2 + strlen(rootAddress) + 1))
+                {
+                    int resultOfConflict = DiffFounder(line11 , line2 , 1 , 10000000 , 1 , 10000000 , 1);
+                    if (resultOfConflict)
+                    {
+                        printf("there is a conflict; stash popping failed :p \n");
+                        return;
+                    }
+                }
+            }
+        }
+
+        //copy the files from stash folder to root
+        char commandForFind[1000] = "find \"";
+        strcat(commandForFind, stashFolderAddress);
+        strcat(commandForFind , "\"");
+        strcat(commandForFind , " -maxdepth 1 2> .niggit/error.log");
+
+        FILE* tempForFind = popen(commandForFind , "r");
+        char line3[1000];
+        while (fgets(line3 , sizeof(line3) , tempForFind) != NULL)
+        {
+            line3[strlen(line3) - 1] = '\0';
+            if (!strcmp(line3 , stashFolderAddress))
+            {
+                continue;
+            }
+            
+            if (strstr(line3 + strlen(stashFolderAddress) - 1 , "branch-") == NULL)
+            {
+                char commandForCopy[1000] = "cp \"";
+                strcat(commandForCopy , line3);
+                strcat(commandForCopy , "\" \"");
+                strcat(commandForCopy , rootAddress);
+                strcat(commandForCopy , "/\"");
+                strcat(commandForCopy , " 2> .niggit/error.log");
+                system(commandForCopy);
+            }
+        }
+        
+        //drop the stash
+        char commandForDroppingTheStash[1000] = "niggit stash drop ";
+        char indexInString[1000] = "";
+        sprintf(indexInString , "%d" , index);
+        strcat(commandForDroppingTheStash , indexInString);
+        system(commandForDroppingTheStash);
         
         //print successful
         printf("you just popped the stash !\n");
@@ -6122,7 +6208,7 @@ void Stash(char **argv)
             {
                 ind++;
                 char stashCount1[1000] , message[1000] , stashAddress[1000] , commitAddress[1000] , branchName[1000];
-                sscanf(line2 , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashCount1 , message , stashAddress , commitAddress , branchName);
+                sscanf(line2 , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashCount1 , message , stashAddress , branchName , commitAddress );
                 strcpy(stashIndex , stashCount1);
                 continue;
             }
@@ -6239,7 +6325,7 @@ void Stash(char **argv)
         {
             line[strcspn(line , "\n")] = '\0';
             char stashCount1[1000] , message[1000] , stashAddress[1000] , commitAddress[1000] , branchName[1000];
-            sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashCount1 , message , stashAddress , commitAddress , branchName);
+            sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashCount1 , message , stashAddress , branchName , commitAddress );
             int ind = stashCounts - atoi(stashCount1) - 1;
             printf(GREEN"stash index : %d\n"RESET , ind);
             printf("message : %s\n" , message);
@@ -6249,7 +6335,7 @@ void Stash(char **argv)
         fclose(stashListTxt2);
     }
     // stash push
-    else if (!strcmp(argv[2] , "push") && (argv[3] == NULL) || !strcmp(argv[3] , "-m"))
+    else if (!strcmp(argv[2] , "push") && ((argv[3] == NULL) || !strcmp(argv[3] , "-m")))
     {
         //get message
         char message[1000] = "";
@@ -6376,12 +6462,12 @@ void Stash(char **argv)
 
         // add stash name message and address to stash list
         FILE* stashListTxt = fopen(stashList , "a");
-        fprintf(stashListTxt , "%s-%s-%s-%s-%s\n" , stashCountString , message , stashAddress , currentCommitAddress , curBranch);
+        fprintf(stashListTxt , "%s-%s-%s-%s-%s\n" , stashCountString , message , stashAddress , curBranch , currentCommitAddress );
         fclose(stashListTxt);
 
         //set stash as the latest stash
         FILE* latestStashTxt = fopen(stashLatest , "w");
-        fprintf(latestStashTxt , "%s-%s-%s-%s-%s\n" , stashCountString , message , stashAddress , currentCommitAddress , curBranch);
+        fprintf(latestStashTxt , "%s-%s-%s-%s-%s\n" , stashCountString , message , stashAddress , curBranch , currentCommitAddress );
         fclose(latestStashTxt);
 
         //increase stash count
@@ -6421,7 +6507,7 @@ void Stash(char **argv)
         while (fgets(line , sizeof(line) , stashListTxt) != NULL)
         {
             char stashId[1000] , message[1000] , stashAddress2[1000] , commitAddress2[1000] , branch[1000] ;
-            sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashId , message , stashAddress2 , commitAddress2 , branch);
+            sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , stashId , message , stashAddress2 , branch , commitAddress2 );
             if (!strcmp(stashId , stashCountString))
             {
                 isStashFound = 1;
