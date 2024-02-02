@@ -4814,12 +4814,14 @@ void ApplyHookOnFile(char fileAddress[1000] , char hookId[1000] , char fileTypes
         //remove the temp copy of the file
         char commandForRemove[1000] = "rm ";
         strcat(commandForRemove , fileAddress);
+        strcat(commandForRemove , " 2> .niggit/error.log");
         FILE* tempForRemove = popen(commandForRemove , "r");
         fclose(tempForRemove);
         //remove .orig file
         char commandForRemoveOrig[1000] = "rm ";
         strcat(commandForRemoveOrig , fileAddress);
-        strcat(commandForRemoveOrig , ".orig");
+        strcat(commandForRemoveOrig , ".orig 2> .niggit/error.log");
+        
         FILE* tempForRemoveOrig = popen(commandForRemoveOrig , "r");
         fclose(tempForRemoveOrig);
         //rename .temp to main file address
@@ -4985,6 +4987,11 @@ void PreCommit(char **argv)
         while (fgets(line , sizeof(line) , tempForFind) != NULL)
         {
             line[strcspn(line , "\n")] = '\0';
+            if (!strstr(line , ".c") && !strstr(line , ".cpp") && !strstr(line , ".cs"))
+            {
+                continue;
+            }
+            
             //delete null space at the end of the file
             FILE* appliedHooksTxt = fopen(line , "r");
             char line2[1000][1000];
@@ -5033,10 +5040,11 @@ void PreCommit(char **argv)
             char commandForDeleteOrigFile[1000] = "rm ";
             strcat(commandForDeleteOrigFile , fileAddressWithOrig);
             strcat(commandForDeleteOrigFile , " 2> .niggit/error.log");
-            system(commandForDeleteOrigFile);
-
-            
+            system(commandForDeleteOrigFile);   
         }
+
+        //print succesful
+        printf(BOLDGREENITALIC"you fixed the stage files :)\n"RESET);
     }
     //print hooks list
     else if (!strcmp(argv[2] , "hooks") && !strcmp(argv[3] , "list") && argv[4] == NULL)
