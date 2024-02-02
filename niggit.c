@@ -3394,12 +3394,12 @@ void Merge(char **argv)
 
     if (!isBranch1Found)
     {
-        printf("BRUH this branch doesn't exists :/\n");
+        printf(BOLDRED"BRUH this branch doesn't exists :/\n"RESET);
         return;
     }
     if (!isBranch2Found)
     {
-        printf("BRUH this branch doesn't exists :/\n");
+        printf(BOLDRED"BRUH this branch doesn't exists :/\n"RESET);
         return;
     }
 
@@ -3453,7 +3453,7 @@ void Merge(char **argv)
                 int resultOfConflict = DiffFounder(line11 , line2 , 1 , 10000000 , 1 , 10000000 , 1);
                 if (resultOfConflict)
                 {
-                    printf("there is a conflict; merging failed :p \n");
+                    printf(BOLDRED"there is a conflict; merging failed :p \n"RESET);
                     return;
                 }
             }
@@ -3690,6 +3690,11 @@ void Merge(char **argv)
             continue;
         }
 
+        // skip if its a branch folder
+        if (strstr(line1 + strlen(latestCommitOfBranch1) + 1 , "branch-") != NULL)
+        {
+            continue;
+        }
         char commandForCopy[1000] = "cp -r \"";
         strcat(commandForCopy , line1);
         strcat(commandForCopy , "\" \"");
@@ -3731,8 +3736,14 @@ void Merge(char **argv)
         {
             continue;
         }
+
+        // skip if its a branch folder
+        if (strstr(line2 + strlen(latestCommitOfBranch2) + 1 , "branch-") != NULL)
+        {
+            continue;
+        }
         
-        char commandForCopy[1000] = "cp \"";
+        char commandForCopy[1000] = "cp -r \"";
         strcat(commandForCopy , line2);
         strcat(commandForCopy , "\" \"");
         strcat(commandForCopy , newCommitAddress);
@@ -3741,7 +3752,7 @@ void Merge(char **argv)
     }
 
     //print successful
-    printf("you just merged %s and %s !!!!\n" , branchName1 , branchName2);
+    printf(BOLDGREENITALIC"you just merged %s and %s !!!!\n"RESET , branchName1 , branchName2);
 }
 void Tag(char **argv)
 {
