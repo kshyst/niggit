@@ -5314,7 +5314,8 @@ void Revert(char **argv)
                 char commandForDelete2[1000] = "rm -r \"";
                 strcat(commandForDelete2 , line2);
                 strcat(commandForDelete2 , "\" 2> .niggit/error.log");
-                system(commandForDelete2);
+                FILE* tempForDelete2 = popen(commandForDelete2 , "r");
+                fclose(tempForDelete2);
             }
         }
 
@@ -5343,7 +5344,8 @@ void Revert(char **argv)
                 strcat(commandForCopy , rootAddress);
                 strcat(commandForCopy , "/\"");
                 strcat(commandForCopy , " 2> .niggit/error.log");
-                system(commandForCopy);
+                FILE* tempForCopy = popen(commandForCopy , "r");
+                fclose(tempForCopy);
             }
         }
 
@@ -5361,7 +5363,8 @@ void Revert(char **argv)
                 char commandForStage2[1000] = "niggit add \"";
                 strcat(commandForStage2 , line4 + 2);
                 strcat(commandForStage2 , "\"");
-                system(commandForStage2);
+                FILE* tempForStage2 = popen(commandForStage2 , "r");
+                fclose(tempForStage2);
             }
         }
         fclose(tempForStage);
@@ -5369,10 +5372,11 @@ void Revert(char **argv)
         char commandForCommit[1000] = "niggit commit -m \"";
         strcat(commandForCommit , commitMessage);
         strcat(commandForCommit , "\"");
-        system(commandForCommit);
+        FILE* tempForCommit = popen(commandForCommit , "r");
+        fclose(tempForCommit);
 
         //print successful
-        printf("you just reverted to the commit : %s\n" , commitId);
+        printf(BOLDMAGENTA"you just reverted to the commit : %s\n"RESET , commitId);
     }
     //revert -n
     else if (!doesHaveHEAD && doesHaveN && !doesHaveM)
@@ -5485,7 +5489,7 @@ void Revert(char **argv)
         }
 
         //print successful
-        printf("you just reverted to the commit : %s\n" , commitId);
+        printf(BOLDMAGENTA"you just reverted to the commit : %s\n"RESET , commitId);
 
     }
     //revert HEAD
@@ -5516,7 +5520,6 @@ void Revert(char **argv)
 
         char* newMessage = CheckOut(commanfForCheckout);
 
-        printf("%s\n" , newMessage);
         if(doesHaveM)
         {
             strcat(commitMessage , argv[3]);
@@ -5540,7 +5543,8 @@ void Revert(char **argv)
                 char commandForStage2[1000] = "niggit add \"";
                 strcat(commandForStage2 , line + 2);
                 strcat(commandForStage2 , "\"");
-                system(commandForStage2);
+                FILE* tempForStage2 = popen(commandForStage2 , "r");
+                fclose(tempForStage2);
             }
         }
         fclose(tempForStage);
@@ -5558,7 +5562,8 @@ void Revert(char **argv)
         char commandForCommit[1000] = "niggit commit -m \"";
         strcat(commandForCommit , commitMessage);
         strcat(commandForCommit , "\"");
-        system(commandForCommit);
+        FILE* tempForCommit = popen(commandForCommit , "r");
+        fclose(tempForCommit);
 
         //print successful
         printf(BOLDMAGENTA"you just reverted to %s commits before head\n"RESET , x);
@@ -5579,7 +5584,7 @@ int DiffFounder(char fileAddress11[1000] , char fileAddress21[1000] , int line1B
     if (file1 == NULL || file2 == NULL)
     {
         printf("one of the files doesn't exist :/\n");
-        return;
+        return 0;
     }
     char line1[1000] , line2[1000];
     int lineNumberFile1 = 1;
@@ -5642,15 +5647,19 @@ int DiffFounder(char fileAddress11[1000] , char fileAddress21[1000] , int line1B
             //checks if the lines are equal
             if (strcmp(line1 , line2))
             {
-                printf("<<<<<<< \n");
-                printf(BOLDYELLOW"file address : %s\n" , fileAddress1);
-                printf("line %d : " , lineNumberFile1);
-                printf("%s"RESET , line1);
-                printf("=======\n");
-                printf(BOLDMAGENTA"file address : %s\n" , fileAddress2);
-                printf("line %d : " , lineNumberFile2);
-                printf("%s"RESET , line2);
-                printf(">>>>>>> \n");
+                if (mode != 2)
+                {    
+                    printf("<<<<<<< \n");
+                    printf(BOLDYELLOW"file address : %s\n" , fileAddress1);
+                    printf("line %d : " , lineNumberFile1);
+                    printf("%s"RESET , line1);
+                    printf("=======\n");
+                    printf(BOLDMAGENTA"file address : %s\n" , fileAddress2);
+                    printf("line %d : " , lineNumberFile2);
+                    printf("%s"RESET , line2);
+                    printf(">>>>>>> \n");
+                }
+                
                 didFoundInEquailty = 1;
             }
         }
@@ -5679,7 +5688,7 @@ int DiffFounder(char fileAddress11[1000] , char fileAddress21[1000] , int line1B
     //print if there is no equality
     if (!didFoundInEquailty && !mode)
     {
-        printf("there is no difference between these files :)\n");
+        printf(BOLDGREENITALIC"there is no difference between these files :)\n"RESET);
         return 0;
     }
     else if (!didFoundInEquailty)
@@ -5905,7 +5914,7 @@ void Diff(char **argv)
 
         if (!didFoundDifFile1)
         {
-            printf("there is no difference between these files :)\n");
+            printf(BOLDGREENITALIC"there is no file that %s has but %s doesn't :)\n"RESET , commitId1 , commitId2);
         }
         //find and print the files in commit2 that doesnt exist in commit 1
         printf(BOLDYELLOW"files that %s has but %s doesn't\n"RESET , commitId2 , commitId1);
@@ -5968,7 +5977,7 @@ void Diff(char **argv)
 
         if (!didFoundDifFile2)
         {
-            printf("there is no difference between these files :)\n");
+            printf(BOLDGREENITALIC"there is no file that %s has but %s doesn't :)\n"RESET , commitId2 , commitId1);
         }
 
         // go through same files and print the difference
@@ -5978,6 +5987,7 @@ void Diff(char **argv)
         strcat(commandForFind4 , " -type f 2> .niggit/error.log");
         FILE* tempForFind4 = popen(commandForFind4 , "r");
         char line4[1000];
+        int foundDiff = 0;
         while (fgets(line4 , sizeof(line4) , tempForFind4))
         {
             line4[strcspn(line4 , "\n")] = '\0';
@@ -6014,14 +6024,16 @@ void Diff(char **argv)
                 if (!strcmp(lineWithoutCommitAddress1 , lineWithoutCommitAddress2))
                 {
                     isFileFound = 1;
-                    DiffFounder(line4 , line2 , 1 , 1000000000 , 1 , 1000000000 , 1);
+                    foundDiff = DiffFounder(line4 , line2 , 1 , 1000000000 , 1 , 1000000000 , 1);
                     break;
                 }
             }
         }
-        
+        if(!foundDiff)
+        {
+            printf(BOLDGREENITALIC"there is no file that %s and %s have but are different :)\n"RESET , commitId1 , commitId2);
+        }
     }
-    
 }
 void Stash(char **argv)
 {
@@ -6054,7 +6066,7 @@ void Stash(char **argv)
         // check if stash count is 0
         if (stashCounts <= 0)
         {
-            printf("BRUH you don't have any stash :/\n");
+            printf(BOLDRED"BRUH you don't have any stash :/\n"RESET);
             return;
         }
         
@@ -6062,7 +6074,7 @@ void Stash(char **argv)
         FILE* stashListTxt = fopen(stashList , "r");
         if (stashListTxt == NULL)
         {
-            printf("BRUH you don't have any stash :/\n");
+            printf(BOLDRED"BRUH you don't have any stash :/\n"RESET);
             return;
         }
         fclose(stashListTxt);
@@ -6074,7 +6086,7 @@ void Stash(char **argv)
             index = atoi(argv[3]);
             if (index < 0 || index >= stashCounts)
             {
-                printf("BRUH this index is not valid :/\n");
+                printf(BOLDRED"BRUH this index is not valid :/\n"RESET);
                 return;
             }
         }
@@ -6123,10 +6135,10 @@ void Stash(char **argv)
                 line2[strlen(line2) - 1] = '\0';
                 if (!strcmp(line11 + strlen(stashFolderAddress) + 1 , line2 + strlen(rootAddress) + 1))
                 {
-                    int resultOfConflict = DiffFounder(line11 , line2 , 1 , 10000000 , 1 , 10000000 , 1);
+                    int resultOfConflict = DiffFounder(line11 , line2 , 1 , 10000000 , 1 , 10000000 , 2);
                     if (resultOfConflict)
                     {
-                        printf("there is a conflict; stash popping failed :p \n");
+                        printf(BOLDRED"there is a conflict; stash popping failed :p \n"RESET);
                         return;
                     }
                 }
@@ -6166,10 +6178,11 @@ void Stash(char **argv)
         char indexInString[1000] = "";
         sprintf(indexInString , "%d" , index);
         strcat(commandForDroppingTheStash , indexInString);
-        system(commandForDroppingTheStash);
+        FILE* tempForDroppingTheStash = popen(commandForDroppingTheStash , "r");
+        fclose(tempForDroppingTheStash);
         
         //print successful
-        printf("you just popped the stash !\n");
+        printf(BOLDCYANITALIC"you just popped the stash !\n"RESET);
     }
     //stash drop
     else if (!strcmp(argv[2] , "drop"))
@@ -6177,14 +6190,14 @@ void Stash(char **argv)
         // check if stash count is 0
         if (stashCounts <= 0)
         {
-            printf("BRUH you don't have any stash :/\n");
+            printf(BOLDRED"you don't have any stash :/\n"RESET);
             return;
         }
         //check if there is any stash
         FILE* stashListTxt = fopen(stashList , "r");
         if (stashListTxt == NULL)
         {
-            printf("BRUH you don't have any stash :/\n");
+            printf(BOLDRED"BRUH you don't have any stash :/\n"RESET);
             return;
         }
         fclose(stashListTxt);
@@ -6197,7 +6210,7 @@ void Stash(char **argv)
             index = stashCounts - index - 1;
             if (index < 0 || index >= stashCounts)
             {
-                printf("BRUH this index is not valid :/\n");
+                printf(BOLDRED"BRUH this index is not valid :/\n"RESET);
                 return;
             }
         }
@@ -6257,7 +6270,7 @@ void Stash(char **argv)
         fclose(stashCountTxt);
 
         //print successful
-        printf("you just dropped the stash !\n");
+        printf(BOLDCYANITALIC"you just dropped the stash !\n"RESET);
     }
     //stash clear
     else if (!strcmp(argv[2] , "clear"))
@@ -6266,7 +6279,7 @@ void Stash(char **argv)
         FILE* stashListTxt = fopen(stashList , "r");
         if (stashListTxt == NULL)
         {
-            printf("BRUH you don't have any stash :/\n");
+            printf(BOLDRED"you don't have any stash :/\n"RESET);
             return;
         }
         fclose(stashListTxt);
@@ -6310,7 +6323,7 @@ void Stash(char **argv)
         system(commandForDeleteStashLatest);
 
         //print successful
-        printf("you just cleared your stash !\n");
+        printf(BOLDCYANITALIC"you just cleared your stash !\n"RESET);
     }
     // stash list
     else if (!strcmp(argv[2] , "list"))
@@ -6319,7 +6332,7 @@ void Stash(char **argv)
         FILE* stashListTxt = fopen(stashList , "r");
         if (stashListTxt == NULL)
         {
-            printf("BRUH you don't have any stash :/\n");
+            printf(BOLDRED"BRUH you don't have any stash :/\n"RESET);
             return;
         }
         fclose(stashListTxt);
@@ -6482,10 +6495,11 @@ void Stash(char **argv)
 
         //checkout to head
         char commandForCheckout[1000] = "niggit checkout HEAD";
-        system(commandForCheckout);
+        FILE* tempForCheckout = popen(commandForCheckout , "r");
+        fclose(tempForCheckout);
 
         //print successful
-        printf("you just pushed your stash !\n");
+        printf(BOLDCYANITALIC"you just pushed!\n"RESET);
     }
     //stash show
     else if (!strcmp(argv[2] , "show") && argv[3] != NULL)
@@ -6493,7 +6507,7 @@ void Stash(char **argv)
         int stashIndex = atoi(argv[3]);
         if (stashIndex >= stashCounts)
         {
-            printf("BRUH this stash doesn't exists :/\n");
+            printf(BOLDRED"BRUH this stash doesn't exists :/\n"RESET);
             return;
         }
         
@@ -6502,6 +6516,7 @@ void Stash(char **argv)
         strcat(stashAddress , stashRepo);
         strcat(stashAddress , "/stash");
         char stashCountString[100];
+        stashIndex = stashCounts - stashIndex - 1;
         sprintf(stashCountString, "%d", stashIndex);
         strcat(stashAddress, stashCountString);
 
@@ -6528,6 +6543,8 @@ void Stash(char **argv)
             return;
         }
 
+        printf("%s\n" , commitAddress);
+        printf("%s\n" , stashAddress);
         // do the diff between the stashaddress and the commit address
         char commandForFindAllFilesInStash[1000] = "find \"";
         strcat(commandForFindAllFilesInStash , stashAddress);
@@ -6546,118 +6563,120 @@ void Stash(char **argv)
             while (fgets(line3 , sizeof(line3) , tempForFindAllFilesInCommit) != NULL)
             {
                 line3[strcspn(line3 , "\n")] = '\0';
-                if (!strcmp(line4 + strlen(line4) + 1 , line3 + strlen(line3) + 1))
+                if (!strcmp(line4 + strlen(stashAddress) + 1 , line3 + strlen(commitAddress) + 1))
                 {
                     isFileFound = 1;
+                    // printf("%s\n" , line4 + strlen(stashAddress) + 1);
+                    // printf("%s\n" , line3 + strlen(commitAddress) + 1);
                     DiffFounder(line4 , line3 , 1 , 1000000000 , 1 , 1000000000 , 1);
                     break;
                 }
             }
-
-        }
-        //change the root files to commit files
-        char commandForFindAllFilesInRoot[1000] = "find ";
-        char rootAddress[1000] = "";
-        FILE* rootAddressTxt = popen("pwd" , "r");
-        fgets(rootAddress , sizeof(rootAddress) , rootAddressTxt);
-        rootAddress[strcspn(rootAddress , "\n")] = '\0';
-        strcat(commandForFindAllFilesInRoot , rootAddress);
-        strcat(commandForFindAllFilesInRoot , " 2> .niggit/error.log");
-        FILE* tempForFindAllFilesInRoot = popen(commandForFindAllFilesInRoot , "r");
-        char line2[1000];
-        while (fgets(line2 , sizeof(line2) , tempForFindAllFilesInRoot) != NULL)
-        {
-            line2[strcspn(line2 , "\n")] = '\0';
-            if (!strcmp(line2 , rootAddress))
-            {
-                continue;
-            }        
-            //skip if .niggit
-            if (strstr(line2 , ".niggit") != NULL)
-            {
-                continue;
-            }
-            
-            //delete everything in root
-            char commandForDelete[1000] = "rm -rf \"";
-            strcat(commandForDelete , line2);
-            strcat(commandForDelete , "\" 2> .niggit/error.log");
-            system(commandForDelete);
         }
 
-        //copy everything from commit address to root
-        char commandForFindAllFilesInCommit[1000] = "find ";
-        strcat(commandForFindAllFilesInCommit , commitAddress);
-        strcat(commandForFindAllFilesInCommit , " 2> .niggit/error.log");
-        FILE* tempForFindAllFilesInCommit = popen(commandForFindAllFilesInCommit , "r");
-        char line3[1000];
-        while (fgets(line3 , sizeof(line3) , tempForFindAllFilesInCommit) != NULL)
-        {
-            line3[strcspn(line3 , "\n")] = '\0';
-            if (!strcmp(line3 , commitAddress))
-            {
-                continue;
-            }
-            // skips if we are cping a file inside another folder
-            int slashCount = 0;
-            for (size_t i = 0; i < strlen(line3); i++)
-            {
-                if (line3[i] == '/')
-                {
-                    slashCount++;
-                }
-            }
-            int slashCountRoot = 0;
-            for (size_t i = 0; i < strlen(rootAddress); i++)
-            {
-                if (rootAddress[i] == '/')
-                {
-                    slashCountRoot++;
-                }
-            }
-            if (slashCount > slashCountRoot + 1)
-            {
-                continue;
-            }
-            // finds out if we are cping a file or a folder
-            int hasDot = 0;
-            for (size_t i = 0; i < strlen(line3); i++)
-            {
-                if (line3[i] == '.')
-                {
-                    hasDot = 1;
-                    break;
-                }
-            }
+        // //change the root files to commit files
+        // char commandForFindAllFilesInRoot[1000] = "find \"";
+        // char rootAddress[1000] = "";
+        // FILE* rootAddressTxt = popen("pwd" , "r");
+        // fgets(rootAddress , sizeof(rootAddress) , rootAddressTxt);
+        // rootAddress[strcspn(rootAddress , "\n")] = '\0';
+        // strcat(commandForFindAllFilesInRoot , rootAddress);
+        // strcat(commandForFindAllFilesInRoot , "\" 2> .niggit/error.log");
+        // FILE* tempForFindAllFilesInRoot = popen(commandForFindAllFilesInRoot , "r");
+        // char line2[1000];
+        // while (fgets(line2 , sizeof(line2) , tempForFindAllFilesInRoot) != NULL)
+        // {
+        //     line2[strcspn(line2 , "\n")] = '\0';
+        //     if (!strcmp(line2 , rootAddress))
+        //     {
+        //         continue;
+        //     }        
+        //     //skip if .niggit
+        //     if (strstr(line2 , ".niggit") != NULL)
+        //     {
+        //         continue;
+        //     }
             
-            if (!hasDot)
-            {
-                if (strstr(line3 , ".niggit") != NULL)
-                {
-                    char commandForCopy[1000] = "cp -r \"";
-                    strcat(commandForCopy , line3);
-                    strcat(commandForCopy , "\" \"");
-                    strcat(commandForCopy , rootAddress);
-                    strcat(commandForCopy , "\" 2> .niggit/error.log");
-                    system(commandForCopy);
-                }
-            }
-            else
-            {
-                if (strstr(line3 , ".niggit") != NULL)
-                {
-                    char commandForCopy[1000] = "cp \"";
-                    strcat(commandForCopy , line3);
-                    strcat(commandForCopy , "\" \"");
-                    strcat(commandForCopy , rootAddress);
-                    strcat(commandForCopy , "\" 2> .niggit/error.log");
-                    system(commandForCopy);
-                }
-            }
-        }
+        //     //delete everything in root
+        //     char commandForDelete[1000] = "rm -rf \"";
+        //     strcat(commandForDelete , line2);
+        //     strcat(commandForDelete , "\" 2> .niggit/error.log");
+        //     system(commandForDelete);
+        // }
+
+        // //copy everything from commit address to root
+        // char commandForFindAllFilesInCommit[1000] = "find ";
+        // strcat(commandForFindAllFilesInCommit , commitAddress);
+        // strcat(commandForFindAllFilesInCommit , " 2> .niggit/error.log");
+        // FILE* tempForFindAllFilesInCommit = popen(commandForFindAllFilesInCommit , "r");
+        // char line3[1000];
+        // while (fgets(line3 , sizeof(line3) , tempForFindAllFilesInCommit) != NULL)
+        // {
+        //     line3[strcspn(line3 , "\n")] = '\0';
+        //     if (!strcmp(line3 , commitAddress))
+        //     {
+        //         continue;
+        //     }
+        //     // skips if we are cping a file inside another folder
+        //     int slashCount = 0;
+        //     for (size_t i = 0; i < strlen(line3); i++)
+        //     {
+        //         if (line3[i] == '/')
+        //         {
+        //             slashCount++;
+        //         }
+        //     }
+        //     int slashCountRoot = 0;
+        //     for (size_t i = 0; i < strlen(rootAddress); i++)
+        //     {
+        //         if (rootAddress[i] == '/')
+        //         {
+        //             slashCountRoot++;
+        //         }
+        //     }
+        //     if (slashCount > slashCountRoot + 1)
+        //     {
+        //         continue;
+        //     }
+        //     // finds out if we are cping a file or a folder
+        //     int hasDot = 0;
+        //     for (size_t i = 0; i < strlen(line3); i++)
+        //     {
+        //         if (line3[i] == '.')
+        //         {
+        //             hasDot = 1;
+        //             break;
+        //         }
+        //     }
+            
+        //     if (!hasDot)
+        //     {
+        //         if (strstr(line3 , ".niggit") != NULL)
+        //         {
+        //             char commandForCopy[1000] = "cp -r \"";
+        //             strcat(commandForCopy , line3);
+        //             strcat(commandForCopy , "\" \"");
+        //             strcat(commandForCopy , rootAddress);
+        //             strcat(commandForCopy , "\" 2> .niggit/error.log");
+        //             system(commandForCopy);
+        //         }
+        //     }
+        //     else
+        //     {
+        //         if (strstr(line3 , ".niggit") != NULL)
+        //         {
+        //             char commandForCopy[1000] = "cp \"";
+        //             strcat(commandForCopy , line3);
+        //             strcat(commandForCopy , "\" \"");
+        //             strcat(commandForCopy , rootAddress);
+        //             strcat(commandForCopy , "\" 2> .niggit/error.log");
+        //             system(commandForCopy);
+        //         }
+        //     }
+        // }
 
         //print successful
-        printf("you just showed your stash !\n");
+        printf(BOLDCYANITALIC"you just showed your stash !\n"RESET);
     }
     //stash branch
     else if (!strcmp(argv[2] , "branch") && argv[3] != NULL)
@@ -6671,7 +6690,7 @@ void Stash(char **argv)
             int index = atoi(argv[4]);
             if (index < 0 || index >= stashCounts)
             {
-                printf("BRUH this index is not valid :/\n");
+                printf(BOLDRED"BRUH this index is not valid :/\n"RESET);
                 return;
             }
             sprintf(indexInString , "%d" , index);
@@ -6685,6 +6704,9 @@ void Stash(char **argv)
             if (strstr(line3 , "there is a conflict") != NULL)
             {
                 printf(BOLDREDITALIC"stashing the branch failed , there is a conflict!\n"RESET);
+                char commandForPushStash[1000] = "niggit stash push";
+                FILE* tempForPushStash = popen(commandForPushStash , "r");
+                fclose(tempForPushStash);
                 return;
             }
         }
@@ -6735,7 +6757,7 @@ void Stash(char **argv)
         fclose(tempForPopStash2);
         
         //print successful
-        printf(BOLDGREENITALIC"you just created a branch and popped your stash !\n"RESET);
+        printf(BOLDCYANITALIC"you just created a branch and popped your stash !\n"RESET);
     }
 }
 void Debug(char **argv)
