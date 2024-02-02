@@ -28,6 +28,7 @@
 #define currentCommit ".niggit/branches/current-commit.txt"
 //merge
 #define mergedsAddress ".niggit/branches/mergedBranches"
+#define treeAddress ".niggit/branches/tree.txt"
 //configs
 #define globalSettingAddress "/home/kshyst/.niggit-settings"
 #define localSettingAddress ".niggit/configs"
@@ -6779,6 +6780,132 @@ void Stash(char **argv)
         printf(BOLDCYANITALIC"you just created a branch and popped your stash !\n"RESET);
     }
 }
+void Tree()
+{
+    FILE* TheTreeText = fopen(treeAddress , "w");
+    for (int i = 0; i < 1000; i++)
+    {
+        fprintf(TheTreeText , "        \n");
+    }
+    fclose(TheTreeText);
+    
+    FILE* commitList = fopen(globalCommitList , "r");
+    if (commitList == NULL)
+    {
+        printf(BOLDRED"BRUH you don't have any commits :/\n"RESET);
+        return;
+    }
+    char line[1000];
+    int masterLineNumber = 1 , branchLineNumber = 1;
+    int isBranchFound = 0;
+    while (fgets(line , sizeof(line) , commitList) != NULL)
+    {
+        char commitId[1000] , userName[1000] , userEmail[1000] , message[1000] , branchName[1000] , commitTime[1000] , fileCount[1000];
+        sscanf(line , "%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^-]%*c%[^\n]%*c" , commitId , message , commitTime , branchName , userName , userEmail , fileCount);
+        
+        if (!strcmp(branchName , "master"))
+        {
+            char tempTxt [1000][1000];
+            int tempLine = 0;
+            FILE* treeText = fopen(treeAddress , "r");
+            while (fgets(tempTxt[tempLine] , sizeof(tempTxt[tempLine]) , treeText) != NULL){tempLine++;}
+            fclose(treeText);
+            tempTxt[masterLineNumber - 1][0] = '#';
+            tempTxt[masterLineNumber - 1][1] = commitId[1];
+            if (strlen(commitId) > 2)
+            {
+                tempTxt[masterLineNumber - 1][2] = commitId[2];
+            }
+            else
+            {
+                tempTxt[masterLineNumber - 1][2] = ' ';
+            }
+            tempTxt[masterLineNumber][1] = '|';
+            
+            FILE* treeText2 = fopen(treeAddress , "w");
+            for (int i = 0; i < 1000; i++)
+            {
+                fprintf(treeText2 , "%s" , tempTxt[i]);
+            }
+            fclose(treeText2);
+
+            if (!isBranchFound)
+            {
+                branchLineNumber += 2;
+            }
+            
+
+            masterLineNumber += 2;
+        }
+        else
+        {
+            char tempTxt [1000][1000];
+            int tempLine = 0;
+            FILE* treeText = fopen(treeAddress , "r");
+            while (fgets(tempTxt[tempLine] , sizeof(tempTxt[tempLine]) , treeText) != NULL){tempLine++;}
+            fclose(treeText);
+            if(!strcmp(commitId , "#merged"))
+            {
+                tempTxt[branchLineNumber - 3][4] = '/';
+
+                FILE* treeText2 = fopen(treeAddress , "w");
+                for (int i = 0; i < 1000; i++)
+                {
+                    fprintf(treeText2 , "%s" , tempTxt[i]);
+                }
+                fclose(treeText2);
+                branchLineNumber += 2;
+                isBranchFound = 0;
+            }
+            else if(isBranchFound)
+            {
+                tempTxt[branchLineNumber - 3][4] = '#';
+                tempTxt[branchLineNumber - 3][5] = commitId[1];
+                if (strlen(commitId) > 2)
+                {
+                    tempTxt[branchLineNumber - 3][6] = commitId[2];
+                }
+                else
+                {
+                    tempTxt[branchLineNumber - 3][6] = ' ';
+                }
+                tempTxt[branchLineNumber - 2][5] = '|';
+
+                FILE* treeText2 = fopen(treeAddress , "w");
+                for (int i = 0; i < 1000; i++)
+                {
+                    fprintf(treeText2 , "%s" , tempTxt[i]);
+                }
+                fclose(treeText2);
+            }
+            else
+            {
+                tempTxt[branchLineNumber - 2][4] = '\\';
+                tempTxt[branchLineNumber - 1][4] = '#';
+                tempTxt[branchLineNumber - 1][5] = commitId[1];
+                if (strlen(commitId) > 2)
+                {
+                    tempTxt[branchLineNumber - 1][6] = commitId[2];
+                }
+                else
+                {
+                    tempTxt[branchLineNumber - 1][6] = ' ';
+                }
+                tempTxt[branchLineNumber][5] = '|';
+
+                FILE* treeText2 = fopen(treeAddress , "w");
+                for (int i = 0; i < 1000; i++)
+                {
+                    fprintf(treeText2 , "%s" , tempTxt[i]);
+                }
+                fclose(treeText2);
+                branchLineNumber += 2;
+            }
+            branchLineNumber +=2;
+            isBranchFound = 1;
+        }
+    }
+}
 void Debug(char **argv)
 {
     char tmp[1000] = RED"hello"RESET;
@@ -6912,6 +7039,10 @@ void CommandFinder(char **argv)
     else if (!strcmp(argv[1] , "stash"))
     {
         Stash(argv);
+    }
+    else if (!strcmp(argv[1] , "tree"))
+    {
+        Tree();
     }
     else if (!strcmp(argv[1] , "debug"))
     {
