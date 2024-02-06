@@ -6701,6 +6701,15 @@ void Stash(char **argv)
     //stash branch
     else if (!strcmp(argv[2] , "branch") && argv[3] != NULL)
     {
+        //empty the stage folder
+        char commandForDeletingStageFolder[1000] = "rm -r ";
+        strcat(commandForDeletingStageFolder , stagesCurrentAddress);
+        strcat(commandForDeletingStageFolder , " 2> .niggit/error.log");
+        FILE* commandRunner = popen(commandForDeletingStageFolder , "r");
+        fclose(commandRunner);
+
+        mkdir(stagesCurrentAddress , 0777);
+        //get branch name
         char branchName[1000] = "";
         strcat(branchName , argv[3]);
         //pop stash
